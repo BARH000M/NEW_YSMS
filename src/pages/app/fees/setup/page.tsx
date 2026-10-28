@@ -5,6 +5,7 @@ import { createFeeHead, fetchFeeHeads, setFeeHeadActive, updateFeeHead } from '@
 import type { FeeHead } from '@/api/types';
 import { formatMoney } from '@/utils/money';
 import Modal from '@/components/app/Modal';
+import MobileFab from '@/components/app/MobileFab';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import {
   Badge,
@@ -120,7 +121,7 @@ export default function FeeSetupPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            className="hidden md:inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
           >
             <i className="ri-add-line" />
             {t('app.feeSetup.add')}
@@ -148,10 +149,58 @@ export default function FeeSetupPage() {
       </Card>
 
       <Card>
+        {/* Phones: one card per fee head instead of a six-column table. */}
+        {filtered.length > 0 ? (
+          <div className="md:hidden divide-y divide-background-100">
+            {filtered.map((head) => (
+              <div key={head.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground-950 truncate">{head.name}</p>
+                    <p className="text-[11px] text-foreground-500 tabular-nums truncate">{head.code ?? '—'}</p>
+                  </div>
+                  <p className="text-sm font-bold text-foreground-950 tabular-nums shrink-0 whitespace-nowrap">
+                    {formatMoney(head.amount)}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <Badge tone="neutral">
+                    {t(`app.feeSetup.cat.${head.category}`, { defaultValue: head.category })}
+                  </Badge>
+                  <Badge tone={head.is_active ? 'secondary' : 'neutral'}>
+                    {head.is_active ? t('app.common.active') : t('app.common.inactive')}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-1.5 mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(head)}
+                    className="inline-flex items-center gap-1 rounded-md border border-background-300 px-2.5 py-1.5 text-[11px] font-semibold text-foreground-700 whitespace-nowrap cursor-pointer"
+                  >
+                    <i className="ri-edit-2-line text-sm" />
+                    {t('app.common.edit')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={rowBusy === head.id}
+                    onClick={() => void toggleActive(head)}
+                    className="inline-flex items-center gap-1 rounded-md border border-background-300 px-2.5 py-1.5 text-[11px] font-semibold text-foreground-700 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  >
+                    <i className={`${head.is_active ? 'ri-toggle-fill' : 'ri-toggle-line'} text-base`} />
+                    {head.is_active ? t('app.common.inactive') : t('app.common.active')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {filtered.length === 0 ? (
           <EmptyState icon="ri-list-settings-line" label={t('app.feeSetup.empty')} />
         ) : (
-          <TableWrap>
+          <TableWrap className="hidden md:block">
             <thead className="bg-background-100 border-b border-background-200">
               <tr>
                 <Th>{t('app.common.name')}</Th>
@@ -203,6 +252,8 @@ export default function FeeSetupPage() {
           </TableWrap>
         )}
       </Card>
+
+      <MobileFab label={t('app.feeSetup.add')} onClick={openCreate} />
 
       {open && (
         <Modal

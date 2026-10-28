@@ -1,69 +1,78 @@
+import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
-import NotFound from '@/pages/NotFound';
-import Home from '@/pages/home/page';
-import Admission from '@/pages/admission/page';
-import Complain from '@/pages/complain/page';
-import Contact from '@/pages/contact/page';
-import System from '@/pages/system/page';
-import LoginPage from '@/pages/login/page';
-import DashboardPage from '@/pages/app/dashboard/page';
-import StudentsPage from '@/pages/app/students/page';
-import AdmissionsPage from '@/pages/app/admissions/page';
-import FrontOfficePage from '@/pages/app/front-office/page';
-import StaffPage from '@/pages/app/staff/page';
-import AcademicsPage from '@/pages/app/academics/page';
-import CalendarPage from '@/pages/app/calendar/page';
-import SettingsPage from '@/pages/app/settings/page';
-import FeesPage from '@/pages/app/fees/page';
-import ExamsPage from '@/pages/app/exams/page';
-import MarksEntryPage from '@/pages/app/exams/marks/page';
-import AttendancePage from '@/pages/app/attendance/page';
-import ReportsPage from '@/pages/app/reports/page';
-import OutstandingPage from '@/pages/app/fees/outstanding/page';
-import RolesPage from '@/pages/app/roles/page';
-import AccountLinksPage from '@/pages/app/account-links/page';
-import TeacherPortalPage from '@/pages/app/portal/teacher/page';
-import StudentPortalPage from '@/pages/app/portal/student/page';
-import CallsPage from '@/pages/app/front-office/calls/page';
-import MailPage from '@/pages/app/front-office/mail/page';
-import FeeSetupPage from '@/pages/app/fees/setup/page';
-import FeeDiscountsPage from '@/pages/app/fees/discounts/page';
-import PromoteStudentsPage from '@/pages/app/students/promote/page';
-import LedgerPage from '@/pages/app/fees/ledger/page';
-import ExpensesPage from '@/pages/app/finance/expenses/page';
-import PayrollPage from '@/pages/app/staff/payroll/page';
-import AttendanceByDatePage from '@/pages/app/attendance/by-date/page';
-import EvaluationPage from '@/pages/app/reports/evaluation/page';
-import CollectionLoadPage from '@/pages/app/reports/collection/page';
-import AssignmentsPage from '@/pages/app/lms/assignments/page';
-import CoursesPage from '@/pages/app/lms/courses/page';
 import RequireAuth from '@/components/app/RequireAuth';
 
+/**
+ * Every screen is loaded on demand. The landing page used to ship the whole
+ * admin console (fees, exams, reports, charts) in one bundle; now the first
+ * paint only pays for the page actually being looked at.
+ */
+const Home = lazy(() => import('@/pages/home/page'));
+const System = lazy(() => import('@/pages/system/page'));
+const Admission = lazy(() => import('@/pages/admission/page'));
+const Complain = lazy(() => import('@/pages/complain/page'));
+const Contact = lazy(() => import('@/pages/contact/page'));
+const LoginPage = lazy(() => import('@/pages/login/page'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
+
+const DashboardPage = lazy(() => import('@/pages/app/dashboard/page'));
+const StudentsPage = lazy(() => import('@/pages/app/students/page'));
+const StudentCategoriesPage = lazy(() => import('@/pages/app/students/categories/page'));
+const PromoteStudentsPage = lazy(() => import('@/pages/app/students/promote/page'));
+const AdmissionsPage = lazy(() => import('@/pages/app/admissions/page'));
+const FrontOfficePage = lazy(() => import('@/pages/app/front-office/page'));
+const CallsPage = lazy(() => import('@/pages/app/front-office/calls/page'));
+const MailPage = lazy(() => import('@/pages/app/front-office/mail/page'));
+const StaffPage = lazy(() => import('@/pages/app/staff/page'));
+const PayrollPage = lazy(() => import('@/pages/app/staff/payroll/page'));
+const AcademicsPage = lazy(() => import('@/pages/app/academics/page'));
+const CalendarPage = lazy(() => import('@/pages/app/calendar/page'));
+const SettingsPage = lazy(() => import('@/pages/app/settings/page'));
+const TeacherPortalPage = lazy(() => import('@/pages/app/portal/teacher/page'));
+const StudentPortalPage = lazy(() => import('@/pages/app/portal/student/page'));
+
+const FeesPage = lazy(() => import('@/pages/app/fees/page'));
+const OutstandingPage = lazy(() => import('@/pages/app/fees/outstanding/page'));
+const FeeSetupPage = lazy(() => import('@/pages/app/fees/setup/page'));
+const FeeDiscountsPage = lazy(() => import('@/pages/app/fees/discounts/page'));
+const LedgerPage = lazy(() => import('@/pages/app/fees/ledger/page'));
+const ExpensesPage = lazy(() => import('@/pages/app/finance/expenses/page'));
+const OtherIncomePage = lazy(() => import('@/pages/app/finance/income/page'));
+
+const AttendancePage = lazy(() => import('@/pages/app/attendance/page'));
+const AttendanceByDatePage = lazy(() => import('@/pages/app/attendance/by-date/page'));
+const ExamsPage = lazy(() => import('@/pages/app/exams/page'));
+const MarksEntryPage = lazy(() => import('@/pages/app/exams/marks/page'));
+
+const ReportsPage = lazy(() => import('@/pages/app/reports/page'));
+const EvaluationPage = lazy(() => import('@/pages/app/reports/evaluation/page'));
+const CollectionLoadPage = lazy(() => import('@/pages/app/reports/collection/page'));
+const FeeStatementReportPage = lazy(() => import('@/pages/app/reports/fee-statement/page'));
+const BalanceFeesReportPage = lazy(() => import('@/pages/app/reports/balance-fees/page'));
+const TransactionReportPage = lazy(() => import('@/pages/app/reports/transactions/page'));
+const MonthlyAttendanceReportPage = lazy(() => import('@/pages/app/reports/attendance-monthly/page'));
+const ExamMarksReportPage = lazy(() => import('@/pages/app/reports/exam-marks/page'));
+const FinanceChartPage = lazy(() => import('@/pages/app/reports/finance-chart/page'));
+
+const AssignmentsPage = lazy(() => import('@/pages/app/lms/assignments/page'));
+const CoursesPage = lazy(() => import('@/pages/app/lms/courses/page'));
+const LibraryPage = lazy(() => import('@/pages/app/library/page'));
+const DownloadCenterPage = lazy(() => import('@/pages/app/downloads/page'));
+const MessagesPage = lazy(() => import('@/pages/app/messages/page'));
+const NoticesPage = lazy(() => import('@/pages/app/notices/page'));
+const TransportPage = lazy(() => import('@/pages/app/transport/page'));
+const HostelPage = lazy(() => import('@/pages/app/hostel/page'));
+
+const RolesPage = lazy(() => import('@/pages/app/roles/page'));
+const AccountLinksPage = lazy(() => import('@/pages/app/account-links/page'));
+
 const routes: RouteObject[] = [
-  {
-    path: '/',
-    element: <Home />,
-  },
-  {
-    path: '/system',
-    element: <System />,
-  },
-  {
-    path: '/admission',
-    element: <Admission />,
-  },
-  {
-    path: '/complain',
-    element: <Complain />,
-  },
-  {
-    path: '/contact',
-    element: <Contact />,
-  },
-  {
-    path: '/login',
-    element: <LoginPage />,
-  },
+  { path: '/', element: <Home /> },
+  { path: '/system', element: <System /> },
+  { path: '/admission', element: <Admission /> },
+  { path: '/complain', element: <Complain /> },
+  { path: '/contact', element: <Contact /> },
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/app',
     element: (
@@ -77,6 +86,22 @@ const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <StudentsPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/students/categories',
+    element: (
+      <RequireAuth>
+        <StudentCategoriesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/students/promote',
+    element: (
+      <RequireAuth>
+        <PromoteStudentsPage />
       </RequireAuth>
     ),
   },
@@ -169,6 +194,54 @@ const routes: RouteObject[] = [
     ),
   },
   {
+    path: '/app/fees/outstanding',
+    element: (
+      <RequireAuth>
+        <OutstandingPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/fees/setup',
+    element: (
+      <RequireAuth>
+        <FeeSetupPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/fees/discounts',
+    element: (
+      <RequireAuth>
+        <FeeDiscountsPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/fees/ledger',
+    element: (
+      <RequireAuth>
+        <LedgerPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/finance/expenses',
+    element: (
+      <RequireAuth>
+        <ExpensesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/finance/income',
+    element: (
+      <RequireAuth>
+        <OtherIncomePage />
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/app/attendance',
     element: (
       <RequireAuth>
@@ -225,6 +298,54 @@ const routes: RouteObject[] = [
     ),
   },
   {
+    path: '/app/reports/fee-statement',
+    element: (
+      <RequireAuth>
+        <FeeStatementReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/reports/balance-fees',
+    element: (
+      <RequireAuth>
+        <BalanceFeesReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/reports/transactions',
+    element: (
+      <RequireAuth>
+        <TransactionReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/reports/attendance-monthly',
+    element: (
+      <RequireAuth>
+        <MonthlyAttendanceReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/reports/exam-marks',
+    element: (
+      <RequireAuth>
+        <ExamMarksReportPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/reports/finance-chart',
+    element: (
+      <RequireAuth>
+        <FinanceChartPage />
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/app/lms/assignments',
     element: (
       <RequireAuth>
@@ -241,50 +362,50 @@ const routes: RouteObject[] = [
     ),
   },
   {
-    path: '/app/fees/outstanding',
+    path: '/app/library',
     element: (
       <RequireAuth>
-        <OutstandingPage />
+        <LibraryPage />
       </RequireAuth>
     ),
   },
   {
-    path: '/app/fees/setup',
+    path: '/app/downloads',
     element: (
       <RequireAuth>
-        <FeeSetupPage />
+        <DownloadCenterPage />
       </RequireAuth>
     ),
   },
   {
-    path: '/app/students/promote',
+    path: '/app/messages',
     element: (
       <RequireAuth>
-        <PromoteStudentsPage />
+        <MessagesPage />
       </RequireAuth>
     ),
   },
   {
-    path: '/app/fees/discounts',
+    path: '/app/notices',
     element: (
       <RequireAuth>
-        <FeeDiscountsPage />
+        <NoticesPage />
       </RequireAuth>
     ),
   },
   {
-    path: '/app/fees/ledger',
+    path: '/app/transport',
     element: (
       <RequireAuth>
-        <LedgerPage />
+        <TransportPage />
       </RequireAuth>
     ),
   },
   {
-    path: '/app/finance/expenses',
+    path: '/app/hostel',
     element: (
       <RequireAuth>
-        <ExpensesPage />
+        <HostelPage />
       </RequireAuth>
     ),
   },
@@ -344,10 +465,7 @@ const routes: RouteObject[] = [
       </RequireAuth>
     ),
   },
-  {
-    path: '*',
-    element: <NotFound />,
-  },
+  { path: '*', element: <NotFound /> },
 ];
 
 export default routes;

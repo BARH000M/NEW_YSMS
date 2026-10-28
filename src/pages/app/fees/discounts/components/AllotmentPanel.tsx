@@ -298,10 +298,48 @@ export default function AllotmentPanel({
             </div>
           }
         />
+        {/* Phones: one card per holder instead of the wide table. */}
+        {filteredAllotments.length > 0 ? (
+          <div className="md:hidden divide-y divide-background-100">
+            {filteredAllotments.map((row) => (
+              <div key={row.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground-950 truncate">
+                      {row.students?.first_name} {row.students?.last_name ?? ''}
+                    </p>
+                    <p className="text-[11px] text-foreground-500 tabular-nums truncate">
+                      {row.students?.student_no ?? '—'} · {row.students?.sections?.classes?.name ?? '—'} /{' '}
+                      {row.students?.sections?.name ?? '—'}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-foreground-950 tabular-nums shrink-0 whitespace-nowrap">
+                    {row.fee_discounts?.discount_type === 'percent'
+                      ? `${Number(row.amount ?? row.fee_discounts?.amount ?? 0)}%`
+                      : formatMoney(row.amount ?? row.fee_discounts?.amount ?? 0)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 mt-2">
+                  <Badge tone="accent">{row.fee_discounts?.name ?? '—'}</Badge>
+                  <button
+                    type="button"
+                    disabled={revoking === row.id}
+                    onClick={() => void revoke(row.id)}
+                    className="inline-flex items-center gap-1 rounded-md border border-background-300 px-2.5 py-1.5 text-[11px] font-semibold text-primary-700 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                  >
+                    <i className="ri-delete-bin-line text-sm" />
+                    {t('app.common.delete')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {filteredAllotments.length === 0 ? (
           <EmptyState icon="ri-gift-line" label={t('app.discounts.noAllotments')} />
         ) : (
-          <TableWrap>
+          <TableWrap className="hidden md:block">
             <thead className="bg-background-100 border-b border-background-200">
               <tr>
                 <Th>{t('app.fees.student')}</Th>

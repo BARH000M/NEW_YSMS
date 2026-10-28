@@ -1,5 +1,43 @@
 import { supabase } from './supabaseClient';
 
+export interface SelfTransport {
+  id: string;
+  allocated_on: string;
+  transport_routes: {
+    id: string;
+    name: string;
+    start_point: string | null;
+    end_point: string | null;
+    fare: number | null;
+    transport_vehicles: {
+      vehicle_no: string;
+      model: string | null;
+      driver_name: string | null;
+      driver_phone: string | null;
+    } | null;
+  } | null;
+  transport_route_stops: {
+    id: string;
+    stop_name: string;
+    pickup_time: string | null;
+    drop_time: string | null;
+  } | null;
+}
+
+export interface SelfHostel {
+  id: string;
+  allocated_on: string;
+  status: string;
+  hostel_rooms: {
+    id: string;
+    room_no: string;
+    floor: string | null;
+    beds: number | null;
+    hostels: { id: string; name: string; warden_name: string | null; warden_phone: string | null } | null;
+    hostel_room_types: { id: string; name: string; beds: number | null; monthly_fee: number | null } | null;
+  } | null;
+}
+
 export interface SelfStudent {
   id: string;
   student_no: string | null;
@@ -45,6 +83,8 @@ export interface SelfStudent {
     amount: number | string | null;
     fee_discounts: { name: string; discount_type: 'fixed' | 'percent'; amount: number | string } | null;
   }[];
+  transport: SelfTransport | null;
+  hostel: SelfHostel | null;
 }
 
 export interface SelfPayload {

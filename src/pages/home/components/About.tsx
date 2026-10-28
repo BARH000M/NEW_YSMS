@@ -13,6 +13,8 @@ export default function About() {
               src="https://readdy.ai/api/search-image?query=Chinese%20teacher%20guiding%20Yemeni%20students%20in%20a%20bright%20modern%20classroom%20with%20Chinese%20calligraphy%20on%20the%20board%2C%20warm%20cream%20walls%2C%20red%20lanterns%2C%20soft%20natural%20light%2C%20editorial%20photography&width=900&height=1000&seq=sai-about-1&orientation=portrait"
               alt={t('about.title')}
               title={t('brand.name')}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover object-top"
             />
           </div>

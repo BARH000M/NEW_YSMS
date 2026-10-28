@@ -13,6 +13,9 @@ export default {
   'nav.complain': '投诉建议',
   'nav.contact': '联系我们',
   'nav.console': '管理后台',
+  'nav.menu': '打开菜单',
+  'nav.closeMenu': '关闭菜单',
+  'nav.language': '语言',
 
   'action.applyNow': '立即报名',
   'action.apply': '报名',

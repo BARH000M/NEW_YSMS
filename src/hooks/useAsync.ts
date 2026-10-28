@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useConsoleRefresh } from '@/components/app/ConsoleRefresh';
 
 export interface AsyncState<T> {
   data: T | null;
@@ -16,8 +17,18 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[] = []): Asy
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const hasData = useRef(false);
 
   const reload = useCallback(() => setTick((n) => n + 1), []);
+
+  // Pull-to-refresh on the console: every screen joins automatically.
+  const refresh = useConsoleRefresh();
+  const register = refresh?.register;
+  const reportError = refresh?.reportError;
+  useEffect(() => {
+    if (!register) return undefined;
+    return register(reload);
+  }, [register, reload]);
 
   useEffect(() => {
     let alive = true;
@@ -27,12 +38,21 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[] = []): Asy
     loader()
       .then((result) => {
         if (!alive) return;
+        hasData.current = true;
         setData(result);
+        if (reportError) reportError(null);
       })
       .catch((err: unknown) => {
         if (!alive) return;
+        const message = err instanceof Error ? err.message : 'Unexpected error';
+        // A failed refresh keeps the last good data on screen and only shows the
+        // inline banner; a first-load failure gets the full error card.
+        if (hasData.current) {
+          if (reportError) reportError(message);
+          return;
+        }
         setData(null);
-        setError(err instanceof Error ? err.message : 'Unexpected error');
+        setError(message);
       })
       .finally(() => {
         if (alive) setLoading(false);

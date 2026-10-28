@@ -17,6 +17,7 @@ import type { InvoiceWithStudent } from '@/api/college';
 import { formatDate } from '@/utils/date';
 import { formatMoney, toNumber } from '@/utils/money';
 import PrintSheet from '@/components/app/PrintSheet';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Badge,
   Card,
@@ -116,7 +117,42 @@ export default function FeesPage() {
         title={t('app.fees.title')}
         subtitle={t('app.fees.subtitle')}
         action={
-          canWrite ? (
+          <>
+            <ExportBar
+              title={`${t('app.fees.invoices')} — ${t('app.nav.brand')}`}
+              fileName="invoice-register"
+              columns={[
+                t('app.fees.invoiceNo'),
+                t('app.fees.student'),
+                t('app.reports.class'),
+                t('app.fees.issued'),
+                t('app.fees.dueDate'),
+                t('app.fees.total'),
+                t('app.fees.paid'),
+                t('app.fees.balance'),
+                t('app.common.status'),
+              ]}
+              rows={rows.map((invoice) => [
+                invoice.invoice_no,
+                invoice.students
+                  ? `${invoice.students.first_name} ${invoice.students.last_name ?? ''}`.trim()
+                  : '',
+                invoice.students?.sections?.classes?.name ?? '',
+                formatDate(invoice.issue_date, i18n.language),
+                invoice.due_date ? formatDate(invoice.due_date, i18n.language) : '',
+                toNumber(invoice.total),
+                paidOf(invoice),
+                balanceOf(invoice),
+                t(`app.status.${invoice.status}`, { defaultValue: invoice.status }),
+              ])}
+              hint={statusFilter === 'all' ? t('app.common.all') : t(`app.status.${statusFilter}`)}
+              summary={[
+                { label: t('app.fees.billed'), value: formatMoney(billed) },
+                { label: t('app.fees.collected'), value: formatMoney(collected) },
+                { label: t('app.fees.outstanding'), value: formatMoney(outstanding) },
+              ]}
+            />
+            {canWrite ? (
             <>
               <Link
                 to="/app/fees/outstanding"
@@ -137,7 +173,8 @@ export default function FeesPage() {
                 {t('app.fees.newInvoice')}
               </button>
             </>
-          ) : null
+            ) : null}
+          </>
         }
       />
 
@@ -409,9 +446,13 @@ export default function FeesPage() {
           students={students}
           heads={heads}
           onClose={() => setInvoiceOpen(false)}
-          onSaved={() => {
+          onSaved={(appliedDiscount) => {
             setInvoiceOpen(false);
-            setNotice(t('app.fees.invoiceSaved'));
+            setNotice(
+              appliedDiscount > 0
+                ? t('app.fees.invoiceSavedAuto', { amount: formatMoney(appliedDiscount) })
+                : t('app.fees.invoiceSaved'),
+            );
             reloadAll();
           }}
         />

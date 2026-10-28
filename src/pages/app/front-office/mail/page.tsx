@@ -5,6 +5,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { createPostalRecord, fetchPostalRecords } from '@/api/operations';
 import { formatDateTime } from '@/utils/date';
 import Modal from '@/components/app/Modal';
+import ExportBar from '@/components/app/ExportBar';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import {
   Card,
@@ -87,17 +88,39 @@ export default function MailPage({ direction }: { direction: Direction }) {
         title={isIncoming ? t('app.mail.incomingTitle') : t('app.mail.outgoingTitle')}
         subtitle={isIncoming ? t('app.mail.incomingSubtitle') : t('app.mail.outgoingSubtitle')}
         action={
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              setOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-          >
-            <i className="ri-add-line" />
-            {isIncoming ? t('app.mail.registerIncoming') : t('app.mail.registerOutgoing')}
-          </button>
+          <>
+            <ExportBar
+              title={`${isIncoming ? t('app.mail.incomingTitle') : t('app.mail.outgoingTitle')} — ${t('app.nav.brand')}`}
+              fileName={isIncoming ? 'incoming-mail' : 'outgoing-mail'}
+              columns={[
+                t('app.mail.sender'),
+                t('app.mail.recipient'),
+                t('app.mail.reference'),
+                t('app.common.date'),
+              ]}
+              rows={filtered.map((row) => [
+                row.sender ?? '',
+                row.recipient ?? '',
+                row.reference ?? '',
+                row.received_at ? formatDateTime(row.received_at, i18n.language) : '',
+              ])}
+              summary={[
+                { label: t('app.mail.total'), value: String(rows.length) },
+                { label: t('app.mail.today'), value: String(todayCount) },
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            >
+              <i className="ri-add-line" />
+              {isIncoming ? t('app.mail.registerIncoming') : t('app.mail.registerOutgoing')}
+            </button>
+          </>
         }
       />
 

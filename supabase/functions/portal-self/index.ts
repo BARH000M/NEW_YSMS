@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
   const ids = students.map((row) => row.id as string);
 
-  const [invoicesRes, paymentsRes, resultsRes, attendanceRes, enrollmentsRes, docsRes, discountsRes] =
+  const [invoicesRes, paymentsRes, resultsRes, attendanceRes, enrollmentsRes, docsRes, discountsRes, transportRes, hostelRes] =
     await Promise.all([
       db
         .from('invoices')
@@ -129,6 +129,20 @@ Deno.serve(async (req) => {
         .from('fee_discount_allotments')
         .select('id, student_id, amount, fee_discounts(name, discount_type, amount)')
         .in('student_id', ids),
+      db
+        .from('transport_allocations')
+        .select(
+          'id, student_id, allocated_on, is_active, transport_routes(id, name, start_point, end_point, fare, transport_vehicles(vehicle_no, model, driver_name, driver_phone)), transport_route_stops(id, stop_name, pickup_time, drop_time)',
+        )
+        .in('student_id', ids)
+        .eq('is_active', true),
+      db
+        .from('hostel_allocations')
+        .select(
+          'id, student_id, allocated_on, status, hostel_rooms(id, room_no, floor, beds, hostels(id, name, warden_name, warden_phone), hostel_room_types(id, name, beds, monthly_fee))',
+        )
+        .in('student_id', ids)
+        .eq('status', 'active'),
     ]);
 
   const paperIds = Array.from(
@@ -198,6 +212,9 @@ Deno.serve(async (req) => {
       enrollments: (enrollmentsRes.data ?? []).filter((row: any) => row.student_id === studentId),
       documents: (docsRes.data ?? []).filter((row: any) => row.student_id === studentId),
       discounts: (discountsRes.data ?? []).filter((row: any) => row.student_id === studentId),
+      transport:
+        (transportRes.data ?? []).find((row: any) => row.student_id === studentId) ?? null,
+      hostel: (hostelRes.data ?? []).find((row: any) => row.student_id === studentId) ?? null,
     };
   });
 

@@ -5,6 +5,7 @@ import { createCallLog, fetchCallLogs } from '@/api/operations';
 import type { CallLog } from '@/api/operations';
 import { formatDateTime } from '@/utils/date';
 import Modal from '@/components/app/Modal';
+import ExportBar from '@/components/app/ExportBar';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import {
   Badge,
@@ -95,17 +96,44 @@ export default function CallsPage() {
         title={t('app.calls.title')}
         subtitle={t('app.calls.subtitle')}
         action={
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              setOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-          >
-            <i className="ri-add-line" />
-            {t('app.calls.log')}
-          </button>
+          <>
+            <ExportBar
+              title={`${t('app.calls.title')} — ${t('app.nav.brand')}`}
+              fileName="call-register"
+              columns={[
+                t('app.calls.caller'),
+                t('app.common.phone'),
+                t('app.calls.direction'),
+                t('app.calls.purpose'),
+                t('app.common.date'),
+                t('app.calls.notes'),
+              ]}
+              rows={filtered.map((row) => [
+                row.caller_name,
+                row.phone ?? '',
+                row.direction === 'incoming' ? t('app.calls.incoming') : t('app.calls.outgoing'),
+                row.purpose ?? '',
+                formatDateTime(row.call_at, i18n.language),
+                row.notes ?? '',
+              ])}
+              summary={[
+                { label: t('app.calls.total'), value: String(stats.total) },
+                { label: t('app.calls.incoming'), value: String(stats.incoming) },
+                { label: t('app.calls.outgoing'), value: String(stats.outgoing) },
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            >
+              <i className="ri-add-line" />
+              {t('app.calls.log')}
+            </button>
+          </>
         }
       />
 

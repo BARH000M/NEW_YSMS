@@ -13,6 +13,9 @@ export default {
   'nav.complain': 'Complain',
   'nav.contact': 'Contact Us',
   'nav.console': 'Management',
+  'nav.menu': 'Open menu',
+  'nav.closeMenu': 'Close menu',
+  'nav.language': 'Language',
 
   'action.applyNow': 'Apply Now',
   'action.apply': 'Apply',

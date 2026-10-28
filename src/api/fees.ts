@@ -1,5 +1,9 @@
 import { supabase } from './supabaseClient';
 import { fetchInstitution } from './college';
+import { discountValue } from '@/utils/discount';
+
+export { discountValue };
+export type { DiscountKind, DiscountRule } from '@/utils/discount';
 
 export type DiscountType = 'fixed' | 'percent';
 
@@ -138,16 +142,4 @@ export async function allotDiscount(input: AllotInput): Promise<number> {
 export async function revokeAllotment(id: string): Promise<void> {
   const { error } = await supabase.from('fee_discount_allotments').delete().eq('id', id);
   if (error) throw new Error(error.message);
-}
-
-/** Money value of a discount against a given base amount (percent resolves against the base). */
-export function discountValue(
-  discount: { discount_type: DiscountType; amount: number | string },
-  base: number,
-  override?: number | string | null,
-): number {
-  const value = Number(override ?? discount.amount ?? 0);
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  if (discount.discount_type === 'percent') return Math.round(((base * value) / 100) * 100) / 100;
-  return Math.min(value, base);
 }

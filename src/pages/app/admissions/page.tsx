@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { fetchAdmissions, updateAdmissionStatus } from '@/api/college';
 import type { Admission } from '@/api/types';
 import { formatDate } from '@/utils/date';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Badge,
   Card,
@@ -78,7 +79,35 @@ export default function AdmissionsPage() {
         title={t('app.adm.title')}
         subtitle={`${list.length} ${t('app.adm.count')} · ${t('app.adm.subtitle')}`}
         action={
-          canWrite ? (
+          <>
+            <ExportBar
+              title={`${t('app.adm.title')} — ${t('app.nav.brand')}`}
+              fileName="admissions"
+              columns={[
+                t('app.adm.applicant'),
+                t('app.common.reference'),
+                t('app.common.phone'),
+                t('app.adm.program'),
+                t('app.adm.education'),
+                t('app.adm.schedule'),
+                t('app.adm.source'),
+                t('app.adm.created'),
+                t('app.common.status'),
+              ]}
+              rows={filtered.map((item) => [
+                item.applicant_name,
+                item.reference_no ?? '',
+                item.phone ?? '',
+                item.program ?? '',
+                item.education_level ?? '',
+                item.preferred_schedule ?? '',
+                t(sourceKey(item.source)),
+                formatDate(item.created_at, i18n.language),
+                t(`app.status.${item.status}`, { defaultValue: item.status }),
+              ])}
+              summary={[{ label: t('app.adm.count'), value: String(filtered.length) }]}
+            />
+            {canWrite ? (
             <button
               type="button"
               onClick={() => {
@@ -90,7 +119,8 @@ export default function AdmissionsPage() {
               <i className="ri-file-add-line" />
               {t('app.adm.newAdmission')}
             </button>
-          ) : null
+            ) : null}
+          </>
         }
       />
 
@@ -127,7 +157,67 @@ export default function AdmissionsPage() {
         {filtered.length === 0 ? (
           <EmptyState icon="ri-file-list-3-line" />
         ) : (
-          <TableWrap>
+          <>
+            {/* Phones: one card per applicant instead of the six-column list. */}
+            <div className="md:hidden divide-y divide-background-100">
+              {filtered.map((item) => (
+                <div key={item.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground-950 truncate">{item.applicant_name}</p>
+                      <p className="text-[11px] text-foreground-500 truncate tabular-nums">
+                        {item.reference_no ?? '—'}
+                        {item.phone ? ` · ${item.phone}` : ''}
+                      </p>
+                    </div>
+                    <StatusPill value={item.status} />
+                  </div>
+
+                  <dl className="mt-2.5 grid grid-cols-1 gap-1 text-[11px] text-foreground-600">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <dt className="text-foreground-400 shrink-0">
+                        <i className="ri-book-open-line" />
+                      </dt>
+                      <dd className="truncate">
+                        {item.program ?? '—'}
+                        {item.education_level ? ` · ${item.education_level}` : ''}
+                      </dd>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <dt className="text-foreground-400 shrink-0">
+                        <i className="ri-time-line" />
+                      </dt>
+                      <dd className="truncate">{item.preferred_schedule ?? '—'}</dd>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <dt className="text-foreground-400 shrink-0">
+                        <i className="ri-calendar-line" />
+                      </dt>
+                      <dd className="tabular-nums truncate">{formatDate(item.created_at, i18n.language)}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="flex items-center justify-between gap-2 mt-2.5">
+                    <Badge tone="neutral">{t(sourceKey(item.source))}</Badge>
+                    <select
+                      value={item.status}
+                      disabled={savingId === item.id}
+                      onChange={(e) => void handleStatus(item, e.target.value)}
+                      className="text-[11px] border border-background-300 rounded-md px-2 py-1.5 bg-background-50 text-foreground-800 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                      aria-label={t('app.adm.statusCol')}
+                    >
+                      {STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {t(`app.status.${status}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <TableWrap className="hidden md:block">
             <thead className="bg-background-100 border-b border-background-200">
               <tr>
                 <Th>{t('app.adm.applicant')}</Th>
@@ -181,6 +271,7 @@ export default function AdmissionsPage() {
               ))}
             </tbody>
           </TableWrap>
+          </>
         )}
       </Card>
 

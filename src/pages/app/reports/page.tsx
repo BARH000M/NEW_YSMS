@@ -20,6 +20,7 @@ import { GRADE_BANDS } from '@/utils/grades';
 import { downloadCsv, fileSlug, todayStamp } from '@/utils/csv';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import PrintSheet from '@/components/app/PrintSheet';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Card,
   EmptyState,
@@ -251,15 +252,57 @@ export default function ReportsPage() {
         title={t('app.reports.title')}
         subtitle={t('app.reports.subtitle')}
         action={
-          <button
-            type="button"
-            onClick={() => openPrint(withMarks, t('app.reports.hint'))}
-            disabled={withMarks.length === 0}
-            className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-          >
-            <i className="ri-printer-line" />
-            {t('app.reports.printAll')}
-          </button>
+          <>
+            <ExportBar
+              title={`${t('app.reports.title')} — ${termLabel}`}
+              fileName={`report-summary-${termLabel}`}
+              columns={[
+                t('app.common.name'),
+                t('app.students.studentNo'),
+                t('app.reports.class'),
+                t('app.reports.section'),
+                t('app.reports.subjects'),
+                t('app.reports.total'),
+                t('app.reports.percentage'),
+                t('app.reports.grade'),
+                t('app.reports.result'),
+              ]}
+              rows={rows.map((student) => {
+                const report = reportByStudent.get(student.id);
+                const hasMarks = (report?.rows.length ?? 0) > 0;
+                return [
+                  `${student.first_name} ${student.last_name ?? ''}`.trim(),
+                  student.student_no ?? '',
+                  student.sections?.classes?.name ?? '',
+                  student.sections?.name ?? '',
+                  hasMarks ? report?.rows.length ?? 0 : '',
+                  hasMarks ? `${report?.obtained} / ${report?.max}` : '',
+                  hasMarks ? `${report?.percentage}%` : '',
+                  hasMarks ? report?.grade ?? '' : '',
+                  hasMarks
+                    ? report?.passed
+                      ? t('app.reports.pass')
+                      : t('app.reports.fail')
+                    : t('app.reports.noMarks'),
+                ];
+              })}
+              hint={termLabel}
+              summary={[
+                { label: t('app.reports.withMarks'), value: String(withMarks.length) },
+                { label: t('app.reports.average'), value: `${average}%` },
+                { label: t('app.reports.passRate'), value: `${passRate}%` },
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => openPrint(withMarks, t('app.reports.hint'))}
+              disabled={withMarks.length === 0}
+              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            >
+              <i className="ri-printer-line" />
+              {t('app.reports.printAll')}
+            </button>
+          </>
         }
       />
 

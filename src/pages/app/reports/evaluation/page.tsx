@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchClasses, fetchExamResults, fetchExamSubjects, fetchSections, fetchStudents } from '@/api/college';
 import { toNumber } from '@/utils/money';
+import ExportBar from '@/components/app/ExportBar';
 import { Card, CardHeader, EmptyState, ErrorState, LoadingBlock, PageHeader, ProgressRow, Row, StatCard, TableWrap, Td, Th } from '@/components/app/ui';
 
 const BANDS = [
@@ -107,7 +108,34 @@ export default function AcademicEvaluationPage() {
 
   return (
     <>
-      <PageHeader title={t('app.evaluation.title')} subtitle={t('app.evaluation.subtitle')} />
+      <PageHeader
+        title={t('app.evaluation.title')}
+        subtitle={t('app.evaluation.subtitle')}
+        action={
+          <ExportBar
+            title={`${t('app.evaluation.title')} — ${t('app.nav.brand')}`}
+            fileName="academic-evaluation"
+            columns={[
+              t('app.reports.section'),
+              t('app.evaluation.students'),
+              t('app.evaluation.marks'),
+              t('app.evaluation.average'),
+              t('app.evaluation.passRate'),
+            ]}
+            rows={sectionRows.map((row) => [row.label, row.students, row.marks, `${row.average}%`, `${row.passRate}%`])}
+            hint={
+              sectionId === 'all'
+                ? t('app.common.all')
+                : sectionRows.find((row) => row.id === sectionId)?.label ?? t('app.common.all')
+            }
+            summary={[
+              { label: t('app.evaluation.average'), value: `${average}%` },
+              { label: t('app.evaluation.passRate'), value: `${passRate}%` },
+              { label: t('app.evaluation.marks'), value: String(scoped.length) },
+            ]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.evaluation.average')} value={`${average}%`} icon="ri-bar-chart-grouped-line" tone="primary" />

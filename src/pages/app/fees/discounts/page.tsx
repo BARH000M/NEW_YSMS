@@ -10,6 +10,8 @@ import {
 import { fetchDiscountAllotments, fetchFeeDiscounts, setFeeDiscountActive } from '@/api/fees';
 import type { FeeDiscount } from '@/api/fees';
 import { formatMoney } from '@/utils/money';
+import ExportBar from '@/components/app/ExportBar';
+import MobileFab from '@/components/app/MobileFab';
 import {
   Badge,
   Card,
@@ -92,16 +94,46 @@ export default function FeeDiscountsPage() {
         title={t('app.discounts.title')}
         subtitle={t('app.discounts.subtitle')}
         action={
-          tab === 'catalogue' ? (
-            <button
-              type="button"
-              onClick={openCreate}
-              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-            >
-              <i className="ri-add-line" />
-              {t('app.discounts.add')}
-            </button>
-          ) : null
+          <>
+            <ExportBar
+              title={`${t('app.discounts.title')} — ${t('app.nav.brand')}`}
+              fileName="fee-discounts"
+              columns={[
+                t('app.common.name'),
+                t('app.discounts.code'),
+                t('app.discounts.type'),
+                t('app.discounts.value'),
+                t('app.common.notes'),
+                t('app.common.status'),
+              ]}
+              rows={filtered.map((discount) => [
+                discount.name,
+                discount.code ?? '',
+                discount.discount_type === 'percent'
+                  ? t('app.discounts.typePercent')
+                  : t('app.discounts.typeFixed'),
+                discount.discount_type === 'percent'
+                  ? `${Number(discount.amount)}%`
+                  : formatMoney(discount.amount),
+                discount.description ?? '',
+                discount.is_active ? t('app.common.active') : t('app.common.inactive'),
+              ])}
+              summary={[
+                { label: t('app.discounts.total'), value: String(discounts.length) },
+                { label: t('app.discounts.active'), value: String(activeCount) },
+              ]}
+            />
+            {tab === 'catalogue' ? (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="hidden md:inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+              >
+                <i className="ri-add-line" />
+                {t('app.discounts.add')}
+              </button>
+            ) : null}
+          </>
         }
       />
 
@@ -125,10 +157,66 @@ export default function FeeDiscountsPage() {
 
       {tab === 'catalogue' ? (
         <Card>
+          {/* Phones: a card per discount code instead of the wide table. */}
+          {filtered.length > 0 ? (
+            <div className="md:hidden divide-y divide-background-100">
+              {filtered.map((discount) => (
+                <div key={discount.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground-950 truncate">{discount.name}</p>
+                      <p className="text-[11px] text-foreground-500 tabular-nums truncate">{discount.code ?? '—'}</p>
+                    </div>
+                    <p className="text-sm font-bold text-foreground-950 tabular-nums shrink-0 whitespace-nowrap">
+                      {discount.discount_type === 'percent'
+                        ? `${Number(discount.amount)}%`
+                        : formatMoney(discount.amount)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <Badge tone="neutral">
+                      {discount.discount_type === 'percent'
+                        ? t('app.discounts.typePercent')
+                        : t('app.discounts.typeFixed')}
+                    </Badge>
+                    <Badge tone={discount.is_active ? 'secondary' : 'neutral'}>
+                      {discount.is_active ? t('app.common.active') : t('app.common.inactive')}
+                    </Badge>
+                  </div>
+
+                  {discount.description ? (
+                    <p className="text-[11px] text-foreground-600 mt-1.5 line-clamp-2">{discount.description}</p>
+                  ) : null}
+
+                  <div className="flex items-center gap-1.5 mt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(discount)}
+                      className="inline-flex items-center gap-1 rounded-md border border-background-300 px-2.5 py-1.5 text-[11px] font-semibold text-foreground-700 whitespace-nowrap cursor-pointer"
+                    >
+                      <i className="ri-edit-2-line text-sm" />
+                      {t('app.common.edit')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={rowBusy === discount.id}
+                      onClick={() => void toggle(discount)}
+                      className="inline-flex items-center gap-1 rounded-md border border-background-300 px-2.5 py-1.5 text-[11px] font-semibold text-foreground-700 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      <i className={`${discount.is_active ? 'ri-toggle-fill' : 'ri-toggle-line'} text-base`} />
+                      {discount.is_active ? t('app.common.inactive') : t('app.common.active')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {filtered.length === 0 ? (
             <EmptyState icon="ri-coupon-2-line" label={t('app.discounts.empty')} />
           ) : (
-            <TableWrap>
+            <TableWrap className="hidden md:block">
               <thead className="bg-background-100 border-b border-background-200">
                 <tr>
                   <Th>{t('app.common.name')}</Th>
@@ -203,6 +291,10 @@ export default function FeeDiscountsPage() {
           onChanged={state.reload}
         />
       )}
+
+      {tab === 'catalogue' ? (
+        <MobileFab label={t('app.discounts.add')} onClick={openCreate} />
+      ) : null}
 
       {modalOpen && (
         <DiscountModal

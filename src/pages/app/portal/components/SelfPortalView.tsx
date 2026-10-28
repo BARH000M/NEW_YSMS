@@ -3,6 +3,8 @@ import { attendanceRate, fullName } from '@/api/portal';
 import type { SelfStudent } from '@/api/portal';
 import { formatMoney } from '@/utils/money';
 import { formatDate } from '@/utils/date';
+import CampusFeed from './CampusFeed';
+import SelfCampusCards from './SelfCampusCards';
 import {
   Avatar,
   Badge,
@@ -63,12 +65,35 @@ export default function SelfPortalView({ student }: SelfPortalViewProps) {
         />
       </div>
 
+      <SelfCampusCards transport={student.transport ?? null} hostel={student.hostel ?? null} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <Card className="lg:col-span-2">
           <CardHeader title={t('app.portal.latestResults')} />
           {student.results.length === 0 ? (
             <EmptyState icon="ri-bar-chart-grouped-line" label={t('app.portal.noResults')} />
           ) : (
+            <>
+            <div className="md:hidden divide-y divide-background-100">
+              {student.results.slice(0, 10).map((row) => (
+                <div key={row.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground-950 truncate min-w-0">
+                      {arabic && row.subject_ar ? row.subject_ar : row.subject || '—'}
+                    </p>
+                    <Badge tone="neutral">{row.grade ?? '—'}</Badge>
+                  </div>
+                  <p className="text-[11px] text-foreground-500 mt-0.5 tabular-nums">
+                    {t('app.portal.marks')}: {row.marks} / {row.max}
+                  </p>
+                  <div className="mt-2">
+                    <ProgressRow value={row.percentage} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block">
             <TableWrap>
               <thead className="bg-background-100 border-b border-background-200">
                 <tr>
@@ -97,6 +122,8 @@ export default function SelfPortalView({ student }: SelfPortalViewProps) {
                 ))}
               </tbody>
             </TableWrap>
+            </div>
+            </>
           )}
         </Card>
 
@@ -211,6 +238,8 @@ export default function SelfPortalView({ student }: SelfPortalViewProps) {
           ))}
         </div>
       </Card>
+
+      <CampusFeed />
     </>
   );
 }

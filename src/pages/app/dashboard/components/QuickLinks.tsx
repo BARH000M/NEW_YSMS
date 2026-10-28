@@ -18,6 +18,7 @@ const ROLE_PRIORITY: Record<AppRole, string[]> = {
     '/app/academics',
     '/app/attendance',
     '/app/fees/outstanding',
+    '/app/library',
     '/app/staff',
     '/app/roles',
   ],
@@ -32,11 +33,20 @@ const ROLE_PRIORITY: Record<AppRole, string[]> = {
     '/app/roles',
   ],
   teacher: ['/app/attendance', '/app/exams/marks', '/app/portal/teacher', '/app/reports', '/app/lms/assignments', '/app/students'],
-  accountant: ['/app/fees', '/app/fees/outstanding', '/app/fees/ledger', '/app/finance/expenses', '/app/staff/payroll', '/app/reports/collection'],
+  accountant: ['/app/fees', '/app/fees/outstanding', '/app/reports/finance-chart', '/app/fees/ledger', '/app/finance/expenses', '/app/staff/payroll', '/app/reports/collection', '/app/messages'],
   receptionist: ['/app/front-office/visitors', '/app/front-office/enquiries', '/app/front-office/calls', '/app/admissions', '/app/students'],
-  librarian: ['/app/students', '/app/lms/courses', '/app/calendar'],
-  student: ['/app/portal/student', '/app/lms/assignments', '/app/lms/courses', '/app/calendar'],
-  parent: ['/app/portal/student', '/app/calendar'],
+  librarian: ['/app/library', '/app/downloads', '/app/messages', '/app/students', '/app/lms/courses', '/app/calendar'],
+  student: [
+    '/app/portal/student',
+    '/app/messages',
+    '/app/notices',
+    '/app/downloads',
+    '/app/library',
+    '/app/lms/assignments',
+    '/app/lms/courses',
+    '/app/calendar',
+  ],
+  parent: ['/app/portal/student', '/app/messages', '/app/notices', '/app/downloads', '/app/library', '/app/calendar'],
 };
 
 const TILE_TONES = ['primary', 'accent', 'secondary'] as const;

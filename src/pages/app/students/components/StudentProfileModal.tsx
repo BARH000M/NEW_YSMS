@@ -2,13 +2,24 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GuardianLink, InvoiceWithStudent, StudentRow } from '@/api/college';
 import type { Institution } from '@/api/types';
+import { fetchSiblings, fetchStudentExtras } from '@/api/campusOps';
+import { useAsync } from '@/hooks/useAsync';
 import { formatDate } from '@/utils/date';
-import { Avatar, StatusPill } from '@/components/app/ui';
+import { Avatar, Badge, StatusPill } from '@/components/app/ui';
 import FamilyBalances from './FamilyBalances';
 import EnrollmentHistory from './EnrollmentHistory';
 import StudentDocuments from './StudentDocuments';
 
 type Tab = 'overview' | 'history' | 'documents';
+
+function RecordItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground-500">{label}</p>
+      <p className="text-xs font-medium text-foreground-900 break-words">{value}</p>
+    </div>
+  );
+}
 
 export default function StudentProfileModal({
   student,
@@ -39,6 +50,18 @@ export default function StudentProfileModal({
     [links, student.id],
   );
 
+  // The 360° record lives in its own tables — load it lazily for the open student.
+  const record = useAsync(async () => {
+    const [extras, siblings] = await Promise.all([fetchStudentExtras(), fetchSiblings()]);
+    return {
+      extras: extras.find((row) => row.student_id === student.id) ?? null,
+      siblings: siblings.filter((row) => row.student_id === student.id),
+    };
+  }, [student.id]);
+
+  const extras = record.data?.extras ?? null;
+  const siblings = record.data?.siblings ?? [];
+
   const displayName = `${student.first_name} ${student.last_name ?? ''}`.trim();
 
   const details = [
@@ -65,14 +88,14 @@ export default function StudentProfileModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <button
         type="button"
         aria-label="close"
         onClick={onClose}
         className="absolute inset-0 bg-foreground-950/50 cursor-pointer"
       />
-      <div className="relative bg-background-50 border border-background-300 rounded-lg w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div className="relative bg-background-50 border border-background-300 rounded-t-lg sm:rounded-lg w-full max-w-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3 p-4 md:p-5 border-b border-background-200 sticky top-0 bg-background-50 z-10">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar name={displayName} />
@@ -122,6 +145,69 @@ export default function StudentProfileModal({
                   </div>
                 ))}
               </dl>
+
+              <div className="mt-4 rounded-md border border-background-200 bg-background-100 p-3">
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-foreground-600">
+                    {t('app.students.record360')}
+                  </p>
+                  {extras?.rte ? <Badge tone="accent">{t('app.students.rte')}</Badge> : null}
+                </div>
+
+                {record.loading ? (
+                  <p className="text-[11px] text-foreground-500">{t('app.common.loading')}…</p>
+                ) : record.error ? (
+                  <p className="text-[11px] text-foreground-500">{t('app.students.recordUnavailable')}</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <RecordItem label={t('app.categories.caste')} value={extras?.caste || '—'} />
+                      <RecordItem label={t('app.categories.skill')} value={extras?.skill_ability || '—'} />
+                      <RecordItem label={t('app.categories.motherTongue')} value={extras?.mother_tongue || '—'} />
+                      <RecordItem label={t('app.categories.nationalId')} value={extras?.national_id || '—'} />
+                    </div>
+
+                    <div className="rounded-md bg-background-50 border border-background-200 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-foreground-500 mb-1.5">
+                        {t('app.categories.previousSchool')}
+                      </p>
+                      {extras?.prev_school_name ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <RecordItem label={t('app.categories.schoolName')} value={extras.prev_school_name} />
+                          <RecordItem label={t('app.categories.lastClass')} value={extras.prev_school_class || '—'} />
+                          <RecordItem label={t('app.categories.tcNo')} value={extras.prev_school_tc_no || '—'} />
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-foreground-500">{t('app.students.prevSchoolNone')}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-foreground-500 mb-1.5">
+                        {t('app.students.siblingsOnFile')}
+                      </p>
+                      {siblings.length === 0 ? (
+                        <p className="text-[11px] text-foreground-500">{t('app.categories.noSiblings')}</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {siblings.map((row) => (
+                            <span
+                              key={row.id}
+                              className="inline-flex items-center gap-1.5 border border-background-300 bg-background-50 rounded-full px-2.5 py-1 text-[11px] text-foreground-800"
+                            >
+                              <i className="ri-user-heart-line text-foreground-500" />
+                              {row.sibling_name}
+                              {row.class_name ? (
+                                <span className="text-foreground-500">· {row.class_name}</span>
+                              ) : null}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-between rounded-md bg-background-100 border border-background-200 px-3 py-2 mt-4">
                 <span className="text-xs text-foreground-600">{t('app.common.status')}</span>

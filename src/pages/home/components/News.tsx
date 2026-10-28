@@ -18,6 +18,8 @@ export default function News() {
                   src={item.image}
                   alt={t(`news.items.${item.id}.title`)}
                   title={t(`news.items.${item.id}.title`)}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
                 />
               </div>

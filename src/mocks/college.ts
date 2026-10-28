@@ -5,7 +5,7 @@ export const contactInfo = {
   whatsapp: 'https://wa.me/967775182228',
   facebook: 'http://facebook.com/sai.college.ye',
   instagram: 'https://www.instagram.com/yemen_sai',
-  logo: 'https://sai-college.com/./uploads/school_content/logo/1776964228-36892287269ea52848950b!sai logo 2026.png',
+  logo: 'https://public.readdy.ai/ai/img_res/6b084a57-c0f5-424e-85a4-da22ecb09864.png',
   mapEmbed: 'https://www.google.com/maps?q=Haddad%20street%20Sanaa%20Yemen&output=embed',
 };
 

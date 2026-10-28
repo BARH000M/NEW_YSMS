@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Modal from '@/components/app/Modal';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
-import { createInvoice } from '@/api/college';
+import { createInvoice, fetchApplicableDiscounts } from '@/api/college';
+import type { ApplicableDiscount } from '@/api/college';
 import type { FeeHead } from '@/api/types';
 import { formatMoney } from '@/utils/money';
 
@@ -22,7 +23,7 @@ export default function InvoiceModal({
   students: StudentOption[];
   heads: FeeHead[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (appliedDiscount: number) => void;
 }) {
   const { t } = useTranslation();
   const [studentId, setStudentId] = useState(students[0]?.id ?? '');
@@ -33,6 +34,38 @@ export default function InvoiceModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [autoDiscounts, setAutoDiscounts] = useState<ApplicableDiscount[]>([]);
+  const [autoLoading, setAutoLoading] = useState(false);
+
+  const base = Number(amount) || 0;
+
+  useEffect(() => {
+    let alive = true;
+    if (!studentId || base <= 0) {
+      setAutoDiscounts([]);
+      setAutoLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+    setAutoLoading(true);
+    const timer = window.setTimeout(() => {
+      fetchApplicableDiscounts(studentId, base)
+        .then((lines) => {
+          if (alive) setAutoDiscounts(lines);
+        })
+        .catch(() => {
+          if (alive) setAutoDiscounts([]);
+        })
+        .finally(() => {
+          if (alive) setAutoLoading(false);
+        });
+    }, 250);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [studentId, base]);
 
   const handleHeadChange = (value: string) => {
     setFeeHeadId(value);
@@ -42,6 +75,8 @@ export default function InvoiceModal({
       setAmount(String(head.amount));
     }
   };
+
+  const autoTotal = autoDiscounts.reduce((sum, line) => sum + line.value, 0);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -65,14 +100,14 @@ export default function InvoiceModal({
         discount: Number(discount) || 0,
         dueDate: dueDate || null,
       });
-      onSaved();
+      onSaved(autoTotal);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('app.common.errorDesc'));
       setBusy(false);
     }
   };
 
-  const total = Math.max(0, (Number(amount) || 0) - (Number(discount) || 0));
+  const total = Math.max(0, base - (Number(discount) || 0) - autoTotal);
 
   return (
     <Modal title={t('app.fees.invoiceTitle')} onClose={onClose}>
@@ -166,6 +201,34 @@ export default function InvoiceModal({
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div className="rounded-md border border-background-200 bg-background-50 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-foreground-900">{t('app.fees.autoDiscounts')}</p>
+            {autoTotal > 0 && (
+              <span className="text-xs font-semibold text-secondary-700 tabular-nums">
+                - {formatMoney(autoTotal)}
+              </span>
+            )}
+          </div>
+          {autoLoading ? (
+            <p className="text-[11px] text-foreground-500 mt-1">{t('app.common.loading')}</p>
+          ) : autoDiscounts.length === 0 ? (
+            <p className="text-[11px] text-foreground-500 mt-1">{t('app.fees.autoDiscountsEmpty')}</p>
+          ) : (
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {autoDiscounts.map((line) => (
+                <li key={line.id} className="flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-foreground-700 truncate">{line.name}</span>
+                  <span className="text-foreground-900 tabular-nums whitespace-nowrap">
+                    - {formatMoney(line.value)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[10px] text-foreground-500 mt-1.5">{t('app.fees.autoDiscountsHint')}</p>
         </div>
 
         <div className="flex flex-col gap-1.5">

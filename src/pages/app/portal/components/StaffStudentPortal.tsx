@@ -192,6 +192,25 @@ export default function StaffStudentPortal() {
               {myResults.length === 0 ? (
                 <EmptyState icon="ri-bar-chart-grouped-line" label={t('app.portal.noResults')} />
               ) : (
+                <>
+                <div className="md:hidden divide-y divide-background-100">
+                  {myResults.map((row) => (
+                    <div key={row.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground-950 truncate min-w-0">{row.subject}</p>
+                        <Badge tone="neutral">{row.grade ?? '—'}</Badge>
+                      </div>
+                      <p className="text-[11px] text-foreground-500 mt-0.5 tabular-nums">
+                        {t('app.portal.marks')}: {row.marks} / {row.max}
+                      </p>
+                      <div className="mt-2">
+                        <ProgressRow value={row.percentage} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden md:block">
                 <TableWrap>
                   <thead className="bg-background-100 border-b border-background-200">
                     <tr>
@@ -218,6 +237,8 @@ export default function StaffStudentPortal() {
                     ))}
                   </tbody>
                 </TableWrap>
+                </div>
+                </>
               )}
             </Card>
 

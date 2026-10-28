@@ -16,6 +16,7 @@ import { fetchAssignments } from '@/api/operations';
 import { recentSchoolDays } from '@/utils/attendance';
 import { formatDate } from '@/utils/date';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Avatar,
   Badge,
@@ -139,25 +140,53 @@ export default function TeacherPortalPage() {
         title={t('app.portal.teacherTitle')}
         subtitle={t('app.portal.teacherSubtitle')}
         action={
-          role === 'teacher' && myStaff ? null : (
-            <div className="flex flex-col gap-1 min-w-[200px]">
-              <label className={labelClass} htmlFor="teacher-pick">
-                {t('app.portal.viewAs')}
-              </label>
-              <select
-                id="teacher-pick"
-                value={teacherId}
-                onChange={(event) => setTeacherId(event.target.value)}
-                className={inputClass}
-              >
-                {staff.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )
+          <>
+            <ExportBar
+              title={`${t('app.portal.teacherTitle')} — ${teacher?.full_name ?? ''}`}
+              fileName={`teacher-portal-${teacher?.staff_no ?? 'sections'}`}
+              columns={[
+                t('app.reports.section'),
+                t('app.portal.students'),
+                t('app.attendance.rate'),
+              ]}
+              rows={mySections.map((section) => {
+                const roster = students.filter((student) => student.section_id === section.id).length;
+                const marks = myAttendance.filter((record) => record.section_id === section.id);
+                const rate = marks.length
+                  ? Math.round(
+                      (marks.filter((record) => record.status === 'present' || record.status === 'late').length /
+                        marks.length) *
+                        100,
+                    )
+                  : 0;
+                return [`${classNameOf(section.class_id)} / ${section.name}`, roster, `${rate}%`];
+              })}
+              summary={[
+                { label: t('app.portal.myStudents'), value: String(myStudents.length) },
+                { label: t('app.portal.mySections'), value: String(mySections.length) },
+                { label: t('app.attendance.rate'), value: `${attendanceRate}%` },
+              ]}
+            />
+            {role === 'teacher' && myStaff ? null : (
+              <div className="flex flex-col gap-1 min-w-[200px]">
+                <label className={labelClass} htmlFor="teacher-pick">
+                  {t('app.portal.viewAs')}
+                </label>
+                <select
+                  id="teacher-pick"
+                  value={teacherId}
+                  onChange={(event) => setTeacherId(event.target.value)}
+                  className={inputClass}
+                >
+                  {staff.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </>
         }
       />
 

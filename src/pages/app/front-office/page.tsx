@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchComplaints, fetchEnquiries, fetchVisitors, updateComplaintStatus } from '@/api/college';
 import { formatDate } from '@/utils/date';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Badge,
   Card,
@@ -41,6 +42,71 @@ export default function FrontOfficePage({ initialTab = 'visitors' }: { initialTa
 
   const { visitors, enquiries, complaints } = state.data;
 
+  /** The register currently on screen, ready for paper or spreadsheet. */
+  const sheet =
+    tab === 'enquiries'
+      ? {
+          title: t('app.front.enquiries'),
+          fileName: 'enquiries',
+          columns: [
+            t('app.common.name'),
+            t('app.common.phone'),
+            t('app.front.subject'),
+            t('app.front.message'),
+            t('app.common.date'),
+            t('app.common.status'),
+          ],
+          rows: enquiries.map((enquiry) => [
+            enquiry.name,
+            enquiry.phone ?? '',
+            enquiry.subject ?? '',
+            enquiry.message ?? '',
+            formatDate(enquiry.created_at, i18n.language),
+            t(`app.status.${enquiry.status}`, { defaultValue: enquiry.status }),
+          ]),
+        }
+      : tab === 'complaints'
+        ? {
+            title: t('app.front.complaints'),
+            fileName: 'complaints',
+            columns: [
+              t('app.common.reference'),
+              t('app.front.subject'),
+              t('app.front.type'),
+              t('app.front.message'),
+              t('app.common.date'),
+              t('app.common.status'),
+            ],
+            rows: complaints.map((complaint) => [
+              complaint.reference_no ?? '',
+              complaint.subject,
+              complaint.type ?? '',
+              complaint.details ?? '',
+              formatDate(complaint.created_at, i18n.language),
+              t(`app.status.${complaint.status}`, { defaultValue: complaint.status }),
+            ]),
+          }
+        : {
+            title: t('app.front.visitors'),
+            fileName: 'visitor-book',
+            columns: [
+              t('app.common.name'),
+              t('app.front.badge'),
+              t('app.front.purpose'),
+              t('app.common.phone'),
+              t('app.front.inAt'),
+              t('app.front.outAt'),
+            ],
+            rows: visitors.map((visitor) => [
+              visitor.name,
+              visitor.badge_no ?? '',
+              visitor.purpose ?? '',
+              visitor.phone ?? '',
+              visitor.in_at ? formatDate(visitor.in_at, i18n.language) : '',
+              visitor.out_at ? formatDate(visitor.out_at, i18n.language) : t('app.front.stillIn'),
+            ]),
+          };
+
   const handleComplaintStatus = async (id: string, next: string) => {
     setActionError(null);
     setSavingId(id);
@@ -56,7 +122,19 @@ export default function FrontOfficePage({ initialTab = 'visitors' }: { initialTa
 
   return (
     <>
-      <PageHeader title={t('app.front.title')} subtitle={t('app.front.subtitle')} />
+      <PageHeader
+        title={t('app.front.title')}
+        subtitle={t('app.front.subtitle')}
+        action={
+          <ExportBar
+            title={`${sheet.title} — ${t('app.nav.brand')}`}
+            fileName={sheet.fileName}
+            columns={sheet.columns}
+            rows={sheet.rows}
+            summary={[{ label: t('app.print.records'), value: String(sheet.rows.length) }]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.front.visitors')} value={visitors.length} icon="ri-door-open-line" tone="primary" />

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchAttendanceSince, fetchClasses, fetchSections, fetchStudents } from '@/api/college';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Card,
   EmptyState,
@@ -86,7 +87,42 @@ export default function AttendanceByDatePage() {
 
   return (
     <>
-      <PageHeader title={t('app.attByDate.title')} subtitle={t('app.attByDate.subtitle')} />
+      <PageHeader
+        title={t('app.attByDate.title')}
+        subtitle={t('app.attByDate.subtitle')}
+        action={
+          <ExportBar
+            title={`${t('app.attByDate.title')} — ${date}`}
+            fileName={`attendance-by-date-${date}`}
+            columns={[
+              t('app.reports.section'),
+              t('app.attByDate.roster'),
+              t('app.attendance.present'),
+              t('app.attendance.absent'),
+              t('app.attendance.late'),
+              t('app.attendance.excused'),
+              t('app.attByDate.unmarked'),
+              t('app.attendance.rate'),
+            ]}
+            rows={rows.map((row) => [
+              row.label,
+              row.roster,
+              row.present,
+              row.absent,
+              row.late,
+              row.excused,
+              row.unmarked,
+              `${row.rate}%`,
+            ])}
+            hint={date}
+            summary={[
+              { label: t('app.attByDate.registered'), value: String(totals.roster) },
+              { label: t('app.attByDate.marked'), value: String(totals.marked) },
+              { label: t('app.attendance.rate'), value: `${overallRate}%` },
+            ]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.attByDate.registered')} value={totals.roster} icon="ri-group-line" tone="primary" />

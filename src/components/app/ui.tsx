@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SkeletonBar } from './Skeleton';
 
 export type Tone = 'primary' | 'accent' | 'secondary' | 'neutral' | 'danger';
 
@@ -60,12 +61,14 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+    <div className="flex flex-col gap-3 mb-4 md:mb-5 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
-        <h1 className="font-heading text-xl md:text-2xl text-foreground-950">{title}</h1>
-        {subtitle ? <p className="text-xs md:text-sm text-foreground-600 mt-1">{subtitle}</p> : null}
+        <h1 className="font-heading text-lg sm:text-xl md:text-2xl text-foreground-950 break-words">{title}</h1>
+        {subtitle ? <p className="text-xs md:text-sm text-foreground-600 mt-1 break-words">{subtitle}</p> : null}
       </div>
-      {action ? <div className="flex items-center gap-2 shrink-0">{action}</div> : null}
+      {action ? (
+        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 min-w-0 lg:justify-end">{action}</div>
+      ) : null}
     </div>
   );
 }
@@ -96,7 +99,9 @@ export function StatCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] md:text-xs font-semibold text-foreground-600">{label}</p>
-          <p className="font-heading text-2xl md:text-3xl text-foreground-950 mt-1 tabular-nums">{value}</p>
+          <p className="font-heading text-xl sm:text-2xl md:text-3xl text-foreground-950 mt-1 tabular-nums break-words leading-tight">
+            {value}
+          </p>
           {hint ? <p className="text-[11px] text-foreground-500 mt-1">{hint}</p> : null}
         </div>
         <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${statTones[tone]}`}>
@@ -128,12 +133,23 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
   );
 }
 
-export function LoadingBlock({ label }: { label?: string }) {
+export function LoadingBlock({ label, rows = 5 }: { label?: string; rows?: number }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center justify-center gap-2 py-14 text-sm text-foreground-500">
-      <span className="w-4 h-4 border-2 border-background-300 border-t-primary-500 rounded-full animate-spin" />
-      {label ?? t('app.common.loading')}
+    <div className="w-full" aria-busy="true" aria-live="polite">
+      <span className="sr-only">{label ?? t('app.common.loading')}</span>
+      <div className="divide-y divide-background-100">
+        {Array.from({ length: rows }, (_, index) => (
+          <div key={index} className="flex items-start gap-3 px-1 py-3">
+            <SkeletonBar className="h-9 w-9 rounded-full shrink-0" />
+            <div className="min-w-0 flex-1">
+              <SkeletonBar className="h-3 w-2/5" />
+              <SkeletonBar className="h-2.5 w-1/4 mt-2" />
+            </div>
+            <SkeletonBar className="h-3 w-14 shrink-0" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -212,10 +228,20 @@ export function Td({ children, className = '' }: { children?: ReactNode; classNa
   return <td className={`px-4 py-3 text-sm text-foreground-800 align-middle ${className}`}>{children}</td>;
 }
 
-export function TableWrap({ children }: { children: ReactNode }) {
+export function TableWrap({
+  children,
+  minWidth = 640,
+  className = '',
+}: {
+  children: ReactNode;
+  minWidth?: number;
+  className?: string;
+}) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse">{children}</table>
+    <div className={`-mx-0 overflow-x-auto overscroll-x-contain ${className}`}>
+      <table className="w-full border-collapse" style={{ minWidth: `${minWidth}px` }}>
+        {children}
+      </table>
     </div>
   );
 }

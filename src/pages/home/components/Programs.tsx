@@ -24,6 +24,8 @@ export default function Programs() {
                   src={program.image}
                   alt={t(`programs.items.${program.id}.title`)}
                   title={t(`programs.items.${program.id}.title`)}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                 />
               </div>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchSelfPortal } from '@/api/portal';
 import { Card, EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/app/ui';
+import ExportBar from '@/components/app/ExportBar';
 import { fullName } from '@/api/portal';
 import SelfPortalView from './SelfPortalView';
 
@@ -28,6 +29,33 @@ export default function SelfStudentPortal() {
       <PageHeader
         title={isParent ? t('app.portal.parentTitle') : t('app.portal.studentTitle')}
         subtitle={isParent ? t('app.portal.parentSubtitle') : t('app.portal.selfSubtitle')}
+        action={
+          active ? (
+            <ExportBar
+              title={`${fullName(active, i18n.language === 'ar')} — ${t('app.portal.latestResults')}`}
+              fileName={`student-portal-${active.student_no ?? active.id.slice(0, 8)}`}
+              columns={[
+                t('app.enroll.subject'),
+                t('app.portal.marks'),
+                t('app.marks.max'),
+                t('app.marks.percentage'),
+                t('app.portal.grade'),
+              ]}
+              rows={active.results.map((result) => [
+                i18n.language === 'ar' && result.subject_ar ? result.subject_ar : result.subject,
+                result.marks,
+                result.max,
+                `${result.percentage}%`,
+                result.grade ?? '',
+              ])}
+              hint={`${active.student_no ?? ''} · ${active.sections?.classes?.name ?? ''}`}
+              summary={[
+                { label: t('app.attendance.rate'), value: `${active.attendance.total ? Math.round(((active.attendance.present + active.attendance.late) / active.attendance.total) * 100) : 0}%` },
+                { label: t('app.portal.outstanding'), value: String(active.finance.outstanding) },
+              ]}
+            />
+          ) : null
+        }
       />
 
       {!state.data?.linked || !active ? (

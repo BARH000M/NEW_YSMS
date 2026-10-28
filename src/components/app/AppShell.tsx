@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/feature/LanguageSwitcher';
 import SidebarNav from '@/components/app/SidebarNav';
+import ConsoleRefreshProvider from '@/components/app/ConsoleRefresh';
 import { mobileItems } from '@/components/app/navConfig';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,10 +12,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { profile, user, role, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
+  const [studentTerm, setStudentTerm] = useState('');
 
   useEffect(() => {
     setDrawer(false);
+    setStudentTerm('');
   }, [location.pathname]);
 
   const bottomItems = useMemo(() => mobileItems(role), [role]);
@@ -78,13 +82,39 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </span>
             </div>
           </div>
+
+          {/* Quick student lookup — phones only, one thumb reach away. */}
+          <form
+            className="lg:hidden px-3 pb-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const term = studentTerm.trim();
+              navigate(term ? `/app/students?q=${encodeURIComponent(term)}` : '/app/students');
+            }}
+          >
+            <div className="relative">
+              <span className="absolute inset-y-0 start-3 flex items-center text-foreground-400">
+                <i className="ri-user-search-line text-sm" />
+              </span>
+              <input
+                type="search"
+                value={studentTerm}
+                onChange={(event) => setStudentTerm(event.target.value)}
+                placeholder={t('app.common.studentSearch')}
+                aria-label={t('app.common.studentSearch')}
+                className="w-full box-border bg-background-100 border border-background-200 rounded-full ps-9 pe-3 py-2 text-sm text-foreground-900 placeholder:text-foreground-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400"
+              />
+            </div>
+          </form>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 pb-24 lg:pb-8">
-          <div className="max-w-[1320px] mx-auto">{children}</div>
+        <main className="flex-1 min-w-0 p-3 sm:p-4 md:p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8">
+          <div className="max-w-[1320px] mx-auto min-w-0">
+            <ConsoleRefreshProvider>{children}</ConsoleRefreshProvider>
+          </div>
         </main>
 
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background-50 border-t border-background-200">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background-50 border-t border-background-200 pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-stretch">
             {bottomItems.map((item) => (
               <NavLink
@@ -92,7 +122,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 end={item.exact}
                 className={({ isActive }) =>
-                  `flex-1 flex flex-col items-center justify-center gap-0.5 py-2 cursor-pointer ${
+                  `flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 cursor-pointer ${
                     isActive ? 'text-primary-600' : 'text-foreground-500'
                   }`
                 }
@@ -100,7 +130,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <span className="w-5 h-5 flex items-center justify-center">
                   <i className={`${item.icon} text-lg`} />
                 </span>
-                <span className="text-[10px] font-medium truncate max-w-full px-1">{t(item.key)}</span>
+                <span className="text-[10px] font-medium truncate max-w-full px-1 leading-tight">{t(item.key)}</span>
               </NavLink>
             ))}
           </div>

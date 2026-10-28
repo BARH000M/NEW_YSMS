@@ -84,6 +84,8 @@ export interface Subject {
   name_ar: string | null;
   name_zh: string | null;
   credit_hours: number;
+  /** theory | practical — mirrors the reference console's subject type column. */
+  subject_type?: string | null;
   is_active: boolean;
 }
 

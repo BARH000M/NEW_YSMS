@@ -7,6 +7,7 @@ import type { Staff } from '@/api/types';
 import { formatMoney, toNumber } from '@/utils/money';
 import { formatDate, todayKey } from '@/utils/date';
 import Modal from '@/components/app/Modal';
+import ExportBar from '@/components/app/ExportBar';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import {
   Badge,
@@ -118,7 +119,39 @@ export default function PayrollPage() {
 
   return (
     <>
-      <PageHeader title={t('app.payroll.title')} subtitle={t('app.payroll.subtitle')} />
+      <PageHeader
+        title={t('app.payroll.title')}
+        subtitle={t('app.payroll.subtitle')}
+        action={
+          <ExportBar
+            title={`${t('app.payroll.title')} — ${t('app.nav.brand')}`}
+            fileName="payroll-register"
+            columns={[
+              t('app.common.name'),
+              t('app.staff.staffNo'),
+              t('app.payroll.designation'),
+              t('app.payroll.department'),
+              t('app.payroll.contract'),
+              t('app.payroll.baseSalary'),
+              t('app.common.status'),
+            ]}
+            rows={filtered.map((member) => [
+              member.full_name,
+              member.staff_no ?? '',
+              member.designation ?? '',
+              member.department ?? '',
+              t(`app.payroll.contractType.${member.contract_type}`, { defaultValue: member.contract_type }),
+              toNumber(member.base_salary),
+              member.is_active ? t('app.common.active') : t('app.common.inactive'),
+            ])}
+            summary={[
+              { label: t('app.payroll.headcount'), value: String(staff.length) },
+              { label: t('app.payroll.monthlyCost'), value: formatMoney(monthlyCost) },
+              { label: t('app.payroll.paidThisMonth'), value: formatMoney(paidThisMonth) },
+            ]}
+          />
+        }
+      />
 
       {notice && (
         <p className="mb-3 text-xs text-secondary-900 bg-secondary-100 border border-secondary-200 rounded-md px-3 py-2">

@@ -4,12 +4,13 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchInvoices, fetchPayments } from '@/api/college';
 import { formatMoney, toNumber } from '@/utils/money';
 import { formatDate } from '@/utils/date';
+import ExportBar from '@/components/app/ExportBar';
+import PageSkeleton from '@/components/app/Skeleton';
 import {
   Badge,
   Card,
   EmptyState,
   ErrorState,
-  LoadingBlock,
   PageHeader,
   Row,
   SearchBox,
@@ -81,12 +82,48 @@ export default function LedgerPage() {
   const total = ledger.reduce((sum, row) => sum + toNumber(row.amount), 0);
   const closing = ledger.length > 0 ? ledger[ledger.length - 1].running : 0;
 
-  if (state.loading) return <LoadingBlock />;
+  if (state.loading) return <PageSkeleton stats={4} rows={7} />;
   if (state.error) return <ErrorState message={state.error} onRetry={state.reload} />;
 
   return (
     <>
-      <PageHeader title={t('app.ledger.title')} subtitle={t('app.ledger.subtitle')} />
+      <PageHeader
+        title={t('app.ledger.title')}
+        subtitle={t('app.ledger.subtitle')}
+        action={
+          <ExportBar
+            title={`${t('app.ledger.title')} — ${t('app.nav.brand')}`}
+            fileName="cash-ledger"
+            columns={[
+              t('app.ledger.receipt'),
+              t('app.common.date'),
+              t('app.ledger.student'),
+              t('app.expenses.method'),
+              t('app.ledger.reference'),
+              t('app.ledger.amount'),
+              t('app.ledger.balance'),
+            ]}
+            rows={filtered.map((row) => {
+              const student = studentOfInvoice.get(row.invoice_id);
+              return [
+                row.receipt_no ?? '',
+                formatDate(row.paid_at, i18n.language),
+                student?.name ?? '',
+                t(`app.expenses.pay.${row.method}`, { defaultValue: row.method }),
+                row.reference ?? '',
+                toNumber(row.amount),
+                row.running,
+              ];
+            })}
+            hint={method === 'all' ? t('app.common.all') : t(`app.expenses.pay.${method}`)}
+            summary={[
+              { label: t('app.ledger.entries'), value: String(filtered.length) },
+              { label: t('app.ledger.collected'), value: formatMoney(total) },
+              { label: t('app.ledger.closing'), value: formatMoney(closing) },
+            ]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.ledger.entries')} value={ledger.length} icon="ri-book-read-line" tone="primary" />
@@ -122,11 +159,57 @@ export default function LedgerPage() {
         </div>
       </Card>
 
-      <Card>
-        {filtered.length === 0 ? (
+      {filtered.length === 0 ? (
+        <Card>
           <EmptyState icon="ri-book-read-line" label={t('app.ledger.empty')} />
-        ) : (
-          <TableWrap>
+        </Card>
+      ) : (
+        <>
+          {/* Phones: one receipt card per entry instead of a sideways-scrolling table. */}
+          <Card className="md:hidden overflow-hidden mb-3">
+            <ul>
+              {filtered.map((row) => {
+                const student = studentOfInvoice.get(row.invoice_id);
+                return (
+                  <li key={row.id} className="border-b border-background-100 last:border-b-0 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground-950 truncate">
+                          {student?.name ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-foreground-500 truncate">{student?.className ?? ''}</p>
+                      </div>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground-950">
+                        {formatMoney(row.amount)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <Badge tone="neutral">
+                        {t(`app.expenses.pay.${row.method}`, { defaultValue: row.method })}
+                      </Badge>
+                      <span className="text-[11px] font-semibold text-foreground-700 tabular-nums">
+                        {row.receipt_no ?? '—'}
+                      </span>
+                      <span className="text-[11px] text-foreground-500">
+                        {formatDate(row.paid_at, i18n.language)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-2 pt-2 border-t border-background-100">
+                      <span dir="ltr" className="text-[11px] text-foreground-500 truncate">
+                        {row.reference ?? '—'}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-foreground-600 tabular-nums">
+                        {t('app.ledger.balance')}: {formatMoney(row.running)}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+
+          <Card className="hidden md:block">
+            <TableWrap>
             <thead className="bg-background-100 border-b border-background-200">
               <tr>
                 <Th>{t('app.ledger.receipt')}</Th>
@@ -163,9 +246,10 @@ export default function LedgerPage() {
                 );
               })}
             </tbody>
-          </TableWrap>
-        )}
-      </Card>
+            </TableWrap>
+          </Card>
+        </>
+      )}
     </>
   );
 }

@@ -375,6 +375,58 @@ export default function OutstandingPage() {
                 </div>
               </div>
 
+              <div className="md:hidden divide-y divide-background-100">
+                {group.students.map((student) => (
+                  <div key={student.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground-950 truncate">{student.name}</p>
+                        <p className="text-[11px] text-foreground-500 mt-0.5 truncate">
+                          {student.sectionName ?? '—'} · {student.rows.length} {t('app.out.invoices')}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-primary-700 tabular-nums shrink-0">
+                        {formatMoney(student.balance)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-2.5">
+                      <p className="text-[11px] text-foreground-500 tabular-nums truncate">
+                        {t('app.out.billed')}: {formatMoney(student.billed)} · {t('app.out.paid')}:{' '}
+                        {formatMoney(student.paid)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openPrint(
+                            [
+                              {
+                                key: `${group.key}-${student.id}`,
+                                label: `${group.label || t('app.common.unknown')} · ${student.name}`,
+                                students: [student],
+                                billed: student.billed,
+                                paid: student.paid,
+                                balance: student.balance,
+                              },
+                            ],
+                            t('app.out.hintClass'),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 border border-background-300 text-foreground-800 text-[11px] font-semibold px-2.5 py-1.5 rounded-md whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <i className="ri-printer-line" />
+                        {t('app.out.printStudent')}
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-foreground-400 mt-1.5 truncate">
+                      {student.rows.map((row) => row.invoice.invoice_no).join(', ')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
               <TableWrap>
                 <thead className="bg-background-100 border-b border-background-200">
                   <tr>
@@ -431,6 +483,7 @@ export default function OutstandingPage() {
                   ))}
                 </tbody>
               </TableWrap>
+              </div>
             </Card>
           ))}
         </div>

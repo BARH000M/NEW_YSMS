@@ -61,60 +61,69 @@ alter table public.fee_discount_allotments enable row level security;
 
 drop policy if exists fee_discounts_staff_read on public.fee_discounts;
 create policy fee_discounts_staff_read on public.fee_discounts
-  for select using (
+  for select to authenticated
+  using (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant','receptionist','teacher'])
+        and ur.role in ('super_admin','admin','accountant','receptionist','teacher')
     )
   );
 
 drop policy if exists fee_discounts_finance_write on public.fee_discounts;
 create policy fee_discounts_finance_write on public.fee_discounts
-  for all using (
+  for all to authenticated using (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant'])
+        and ur.role in ('super_admin','admin','accountant')
     )
   ) with check (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant'])
+        and ur.role in ('super_admin','admin','accountant')
     )
   );
 
 drop policy if exists fee_discount_allotments_staff_read on public.fee_discount_allotments;
 create policy fee_discount_allotments_staff_read on public.fee_discount_allotments
-  for select using (
+  for select to authenticated
+  using (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant','receptionist','teacher'])
+        and ur.role in ('super_admin','admin','accountant','receptionist','teacher')
     )
   );
 
--- A linked student may see the discounts granted to their own record only.
+-- A linked student (or the guardian of that student) may only read their own rows.
 drop policy if exists fee_discount_allotments_self_read on public.fee_discount_allotments;
 create policy fee_discount_allotments_self_read on public.fee_discount_allotments
-  for select using (
+  for select to authenticated
+  using (
     student_id in (select s.id from public.students s where s.profile_id = auth.uid())
+    or student_id in (
+      select sg.student_id
+      from public.student_guardians sg
+      join public.guardians g on g.id = sg.guardian_id
+      where g.profile_id = auth.uid()
+    )
   );
 
 drop policy if exists fee_discount_allotments_finance_write on public.fee_discount_allotments;
 create policy fee_discount_allotments_finance_write on public.fee_discount_allotments
-  for all using (
+  for all to authenticated using (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant'])
+        and ur.role in ('super_admin','admin','accountant')
     )
   ) with check (
     exists (
       select 1 from public.user_roles ur
       where ur.user_id = auth.uid() and ur.is_active
-        and ur.role = any (array['super_admin','admin','accountant'])
+        and ur.role in ('super_admin','admin','accountant')
     )
   );
 

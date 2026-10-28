@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { discountValue, roundMoney } from '@/utils/discount';
 import type {
   AcademicYear,
   Admission,
@@ -570,12 +571,63 @@ export interface NewInvoiceInput {
   termId?: string | null;
 }
 
+export interface ApplicableDiscount {
+  id: string;
+  name: string;
+  value: number;
+}
+
+/**
+ * Discounts already allotted to a student, resolved against a base amount.
+ * The invoice builder preview and `createInvoice` both use this, so the number
+ * on screen is exactly the number written to the invoice.
+ */
+export async function fetchApplicableDiscounts(
+  studentId: string,
+  base: number,
+): Promise<ApplicableDiscount[]> {
+  if (!studentId) return [];
+  const { data, error } = await supabase
+    .from('fee_discount_allotments')
+    .select('id, amount, fee_discounts(id, name, discount_type, amount, is_active)')
+    .eq('student_id', studentId);
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    amount: number | string | null;
+    fee_discounts: {
+      id: string;
+      name: string;
+      discount_type: 'fixed' | 'percent';
+      amount: number | string;
+      is_active: boolean;
+    } | null;
+  }>;
+
+  return rows.reduce<ApplicableDiscount[]>((lines, row) => {
+    const discount = row.fee_discounts;
+    if (!discount || !discount.is_active) return lines;
+    const value = discountValue(
+      { discount_type: discount.discount_type, amount: discount.amount },
+      base,
+      row.amount,
+    );
+    if (value > 0) lines.push({ id: row.id, name: discount.name, value });
+    return lines;
+  }, []);
+}
+
 export async function createInvoice(input: NewInvoiceInput): Promise<string> {
   const institution = await fetchInstitution();
   if (!institution) throw new Error('Institution is not configured');
 
-  const discount = Math.max(0, input.discount ?? 0);
-  const total = Math.max(0, input.amount - discount);
+  // Allotted discounts are applied first, then any manual adjustment on top.
+  const allotted = await fetchApplicableDiscounts(input.studentId, input.amount);
+  const autoDiscount = roundMoney(allotted.reduce((sum, line) => sum + line.value, 0));
+  const manualDiscount = Math.max(0, input.discount ?? 0);
+  const discount = Math.min(input.amount, roundMoney(manualDiscount + autoDiscount));
+  const total = Math.max(0, roundMoney(input.amount - discount));
 
   const { data, error } = await supabase
     .from('invoices')

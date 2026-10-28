@@ -13,13 +13,13 @@ import {
   saveExamResults,
 } from '@/api/college';
 import { gradeFor, percentageOf } from '@/utils/grades';
-import { downloadCsv, fileSlug, todayStamp } from '@/utils/csv';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
+import ExportBar from '@/components/app/ExportBar';
+import PageSkeleton from '@/components/app/Skeleton';
 import {
   Card,
   EmptyState,
   ErrorState,
-  LoadingBlock,
   PageHeader,
   Row,
   SearchBox,
@@ -188,6 +188,30 @@ export default function MarksEntryPage() {
 
   const maxMarks = Number(selectedPaper?.max_marks ?? 0);
 
+  /** Exactly the rows on screen, ready for print or CSV. */
+  const exportRows = useMemo(
+    () =>
+      paperStudents.map((student) => {
+        const entry = draft[student.id] ?? { marks: '', remarks: '' };
+        const value = Number(entry.marks);
+        const hasValue = entry.marks.trim() !== '' && Number.isFinite(value);
+        const percentage = hasValue ? percentageOf(value, maxMarks) : null;
+        const cells: (string | number)[] = [
+          `${student.first_name} ${student.last_name ?? ''}`.trim(),
+          student.student_no ?? '',
+          student.sections?.classes?.name ?? '',
+          student.sections?.name ?? '',
+          hasValue ? value : '',
+          maxMarks,
+          percentage === null ? '' : `${percentage}%`,
+          percentage === null ? '' : gradeFor(percentage),
+          entry.remarks ?? '',
+        ];
+        return cells;
+      }),
+    [paperStudents, draft, maxMarks],
+  );
+
   /** Only the students currently in view count towards the entered/average stats. */
   const enteredEntries = useMemo(
     () =>
@@ -258,46 +282,7 @@ export default function MarksEntryPage() {
    * Offline copy of exactly what is on screen: the students currently in view,
    * their saved/entered marks, percentage and grade.
    */
-  const handleExport = () => {
-    if (!selectedPaper) return;
-    const rows: (string | number | null)[][] = [
-      [
-        t('app.common.name'),
-        t('app.students.studentNo'),
-        t('app.reports.class'),
-        t('app.reports.section'),
-        t('app.marks.marks'),
-        t('app.marks.max'),
-        t('app.marks.percentage'),
-        t('app.marks.grade'),
-        t('app.marks.remarks'),
-      ],
-    ];
-
-    paperStudents.forEach((student) => {
-      const entry = draft[student.id] ?? { marks: '', remarks: '' };
-      const value = Number(entry.marks);
-      const hasValue = entry.marks.trim() !== '' && Number.isFinite(value);
-      const percentage = hasValue ? percentageOf(value, maxMarks) : null;
-      rows.push([
-        `${student.first_name} ${student.last_name ?? ''}`.trim(),
-        student.student_no ?? '',
-        student.sections?.classes?.name ?? '',
-        student.sections?.name ?? '',
-        hasValue ? value : '',
-        maxMarks,
-        percentage === null ? '' : `${percentage}%`,
-        percentage === null ? '' : gradeFor(percentage),
-        entry.remarks ?? '',
-      ]);
-    });
-
-    const paperName = selectedPaper.subjects?.name ?? t('app.marks.paper');
-    downloadCsv(`${fileSlug(paperName)}-marks-${todayStamp()}.csv`, rows);
-    setNotice(t('app.marks.exported'));
-  };
-
-  if (state.loading) return <LoadingBlock />;
+  if (state.loading) return <PageSkeleton stats={4} rows={8} />;
   if (state.error || !state.data) {
     return <ErrorState message={state.error ?? t('app.common.errorDesc')} onRetry={state.reload} />;
   }
@@ -318,16 +303,28 @@ export default function MarksEntryPage() {
         title={t('app.marks.title')}
         subtitle={t('app.marks.subtitle')}
         action={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={!selectedPaper || paperStudents.length === 0}
-              className="inline-flex items-center gap-1.5 border border-background-300 hover:border-primary-400 disabled:opacity-60 text-foreground-800 text-xs font-semibold px-3 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-            >
-              <i className="ri-download-2-line" />
-              {t('app.marks.exportCsv')}
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportBar
+              title={`${selectedPaper?.subjects?.name ?? t('app.marks.paper')} — ${t('app.marks.title')}`}
+              fileName={`${selectedPaper?.subjects?.name ?? 'marks'}-sheet`}
+              columns={[
+                t('app.common.name'),
+                t('app.students.studentNo'),
+                t('app.reports.class'),
+                t('app.reports.section'),
+                t('app.marks.marks'),
+                t('app.marks.max'),
+                t('app.marks.percentage'),
+                t('app.marks.grade'),
+                t('app.marks.remarks'),
+              ]}
+              rows={exportRows}
+              hint={selectedPaper?.sections?.name ?? t('app.common.all')}
+              summary={[
+                { label: t('app.marks.entered'), value: `${enteredEntries.length} / ${paperPool.length}` },
+                { label: t('app.marks.average'), value: `${average}%` },
+              ]}
+            />
             {canWrite ? (
               <button
                 type="button"
@@ -490,8 +487,80 @@ export default function MarksEntryPage() {
           <EmptyState label={t('app.marks.noStudents')} icon="ri-user-search-line" />
         </Card>
       ) : (
-        <Card>
-          <TableWrap>
+        <>
+          {/* Phones: one marks card per student instead of a sideways-scrolling grid. */}
+          <Card className="md:hidden overflow-hidden">
+            <ul>
+              {paperStudents.map((student) => {
+                const entry = draft[student.id] ?? { marks: '', remarks: '' };
+                const value = Number(entry.marks);
+                const hasValue = entry.marks.trim() !== '' && Number.isFinite(value);
+                const percentage = hasValue ? percentageOf(value, maxMarks) : null;
+                const grade = hasValue ? gradeFor(percentage ?? 0) : '—';
+                const failed = hasValue && (percentage ?? 0) < 50;
+
+                return (
+                  <li key={student.id} className="border-b border-background-100 last:border-b-0 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground-950 truncate">
+                          {student.first_name} {student.last_name ?? ''}
+                        </p>
+                        <p className="text-[11px] text-foreground-500 truncate">
+                          {student.first_name_ar} {student.last_name_ar}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[11px] font-medium text-foreground-600 tabular-nums">
+                        {student.student_no ?? '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={maxMarks}
+                        step="0.5"
+                        value={entry.marks}
+                        disabled={!canWrite}
+                        onChange={(event) => updateEntry(student.id, { marks: event.target.value })}
+                        aria-label={`${student.first_name} ${t('app.marks.marks')}`}
+                        className="w-20 box-border bg-background-50 border border-background-300 rounded-md px-2 py-1.5 text-sm text-foreground-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 disabled:opacity-60"
+                      />
+                      <span className="text-[11px] text-foreground-500 tabular-nums">/ {maxMarks}</span>
+                      <span className="ms-auto inline-flex items-center gap-2">
+                        <span className="text-[11px] tabular-nums text-foreground-600">
+                          {percentage === null ? '—' : `${percentage}%`}
+                        </span>
+                        <span
+                          className={`inline-flex items-center justify-center min-w-[2.5rem] rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            !hasValue
+                              ? 'bg-background-200 text-foreground-500'
+                              : failed
+                                ? 'bg-primary-100 text-primary-900'
+                                : 'bg-secondary-100 text-secondary-900'
+                          }`}
+                        >
+                          {grade}
+                        </span>
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={entry.remarks}
+                      disabled={!canWrite}
+                      onChange={(event) => updateEntry(student.id, { remarks: event.target.value })}
+                      placeholder={t('app.marks.remarks')}
+                      aria-label={`${student.first_name} ${t('app.marks.remarks')}`}
+                      className="w-full box-border mt-2 bg-background-50 border border-background-300 rounded-md px-2 py-1.5 text-xs text-foreground-900 placeholder:text-foreground-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 disabled:opacity-60"
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+
+          <Card className="hidden md:block">
+            <TableWrap>
             <thead className="bg-background-100 border-b border-background-200">
               <tr>
                 <Th>{t('app.common.name')}</Th>
@@ -566,8 +635,9 @@ export default function MarksEntryPage() {
                 );
               })}
             </tbody>
-          </TableWrap>
-        </Card>
+            </TableWrap>
+          </Card>
+        </>
       )}
     </>
   );

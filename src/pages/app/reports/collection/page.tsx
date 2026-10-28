@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchInvoices } from '@/api/college';
 import { formatMoney, toNumber } from '@/utils/money';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Card,
   CardHeader,
@@ -72,7 +73,37 @@ export default function CollectionLoadPage() {
 
   return (
     <>
-      <PageHeader title={t('app.collection.title')} subtitle={t('app.collection.subtitle')} />
+      <PageHeader
+        title={t('app.collection.title')}
+        subtitle={t('app.collection.subtitle')}
+        action={
+          <ExportBar
+            title={`${t('app.collection.title')} — ${t('app.nav.brand')}`}
+            fileName="collection-load"
+            columns={[
+              t('app.reports.class'),
+              t('app.collection.invoices'),
+              t('app.collection.billed'),
+              t('app.collection.collected'),
+              t('app.collection.outstanding'),
+              t('app.collection.rate'),
+            ]}
+            rows={buckets.map((bucket) => [
+              bucket.name,
+              bucket.invoices,
+              toNumber(bucket.billed),
+              toNumber(bucket.collected),
+              toNumber(bucket.outstanding),
+              `${bucket.rate}%`,
+            ])}
+            summary={[
+              { label: t('app.collection.billed'), value: formatMoney(totals.billed) },
+              { label: t('app.collection.collected'), value: formatMoney(totals.collected) },
+              { label: t('app.collection.outstanding'), value: formatMoney(totals.outstanding) },
+            ]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.collection.billed')} value={formatMoney(totals.billed)} icon="ri-receipt-line" tone="primary" />

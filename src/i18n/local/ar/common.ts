@@ -13,6 +13,9 @@ export default {
   'nav.complain': 'تقديم شكوى',
   'nav.contact': 'اتصل بنا',
   'nav.console': 'لوحة الإدارة',
+  'nav.menu': 'فتح القائمة',
+  'nav.closeMenu': 'إغلاق القائمة',
+  'nav.language': 'اللغة',
 
   'action.applyNow': 'قدّم الآن',
   'action.apply': 'تقديم',

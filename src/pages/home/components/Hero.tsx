@@ -11,6 +11,8 @@ export default function Hero() {
         src="https://readdy.ai/api/search-image?query=Joyful%20graduates%20in%20black%20gowns%20tossing%20caps%20in%20the%20air%2C%20artistic%20painterly%20style%20with%20deep%20crimson%20and%20warm%20gold%20tones%2C%20dark%20moody%20background%20for%20strong%20white%20text%20contrast%2C%20cinematic%20editorial%20illustration&width=1920&height=1080&seq=sai-hero-1&orientation=landscape"
         alt={t('hero.title')}
         title={t('brand.name')}
+        fetchPriority="high"
+        decoding="async"
         className="absolute inset-0 w-full h-full object-cover object-top"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-foreground-950/70 via-foreground-950/50 to-foreground-950/80" />

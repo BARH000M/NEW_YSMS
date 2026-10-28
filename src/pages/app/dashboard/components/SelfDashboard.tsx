@@ -43,6 +43,27 @@ function ChildCard({ student }: { student: SelfStudent }) {
             </p>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+          <div className="flex items-center gap-2 rounded-md bg-background-100 border border-background-200 px-2.5 py-2 min-w-0">
+            <span className="w-5 h-5 flex items-center justify-center text-foreground-600 shrink-0">
+              <i className="ri-bus-2-line" />
+            </span>
+            <span className="truncate text-foreground-800">
+              {student.transport?.transport_routes?.name ?? t('app.portal.noTransport')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 rounded-md bg-background-100 border border-background-200 px-2.5 py-2 min-w-0">
+            <span className="w-5 h-5 flex items-center justify-center text-foreground-600 shrink-0">
+              <i className="ri-building-4-line" />
+            </span>
+            <span className="truncate text-foreground-800">
+              {student.hostel?.hostel_rooms?.room_no
+                ? `${t('app.portal.room')} ${student.hostel.hostel_rooms.room_no}`
+                : t('app.portal.noHostel')}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-3">

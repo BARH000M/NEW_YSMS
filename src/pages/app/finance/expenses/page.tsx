@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchPayments } from '@/api/college';
@@ -7,6 +8,8 @@ import type { Expense } from '@/api/operations';
 import { formatMoney, toNumber } from '@/utils/money';
 import { formatDate, todayKey } from '@/utils/date';
 import Modal from '@/components/app/Modal';
+import ExportBar from '@/components/app/ExportBar';
+import RecordPrintButton from '@/components/app/RecordPrintButton';
 import { inputClass, labelClass } from '@/components/feature/formStyles';
 import {
   Badge,
@@ -119,18 +122,52 @@ export default function ExpensesPage() {
         title={t('app.expenses.title')}
         subtitle={t('app.expenses.subtitle')}
         action={
-          <button
-            type="button"
-            onClick={() => {
-              setForm({ ...emptyForm, spentOn: todayKey() });
-              setFormError(null);
-              setOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-          >
-            <i className="ri-add-line" />
-            {t('app.expenses.add')}
-          </button>
+          <>
+            <Link
+              to="/app/reports/finance-chart"
+              className="inline-flex items-center gap-1.5 border border-background-300 hover:border-primary-400 text-foreground-800 text-xs font-semibold px-3 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            >
+              <i className="ri-line-chart-line" />
+              {t('app.nav.financeChart')}
+            </Link>
+            <ExportBar
+              title={`${t('app.expenses.title')} — ${t('app.nav.brand')}`}
+              fileName="expenses"
+              columns={[
+                t('app.expenses.item'),
+                t('app.expenses.category'),
+                t('app.expenses.amount'),
+                t('app.common.date'),
+                t('app.expenses.method'),
+                t('app.expenses.reference'),
+              ]}
+              rows={expenses.map((row) => [
+                row.title,
+                t(`app.expenses.cat.${row.category}`, { defaultValue: row.category }),
+                toNumber(row.amount),
+                formatDate(row.spent_on, i18n.language),
+                t(`app.expenses.pay.${row.method}`, { defaultValue: row.method }),
+                row.reference ?? '',
+              ])}
+              summary={[
+                { label: t('app.expenses.income'), value: formatMoney(incomeTotal) },
+                { label: t('app.expenses.spent'), value: formatMoney(expenseTotal) },
+                { label: t('app.expenses.net'), value: formatMoney(net) },
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ ...emptyForm, spentOn: todayKey() });
+                setFormError(null);
+                setOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+            >
+              <i className="ri-add-line" />
+              {t('app.expenses.add')}
+            </button>
+          </>
         }
       />
 
@@ -163,6 +200,71 @@ export default function ExpensesPage() {
           {expenses.length === 0 ? (
             <EmptyState icon="ri-exchange-dollar-line" label={t('app.expenses.empty')} />
           ) : (
+            <>
+            <div className="md:hidden divide-y divide-background-100">
+              {expenses.map((row) => (
+                <div key={row.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground-950 break-words">{row.title}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <Badge tone="neutral">
+                          {t(`app.expenses.cat.${row.category}`, { defaultValue: row.category })}
+                        </Badge>
+                        <span className="text-[11px] text-foreground-500 whitespace-nowrap">
+                          {formatDate(row.spent_on, i18n.language)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold text-foreground-950 tabular-nums shrink-0">
+                      {formatMoney(row.amount)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-2.5">
+                    <p className="text-[11px] text-foreground-500 truncate min-w-0">
+                      {t(`app.expenses.pay.${row.method}`, { defaultValue: row.method })}
+                      {row.reference ? ` · ${row.reference}` : ''}
+                    </p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <RecordPrintButton
+                        title={`${t('app.expenses.title')} — ${row.title}`}
+                        columns={[
+                          t('app.expenses.item'),
+                          t('app.expenses.category'),
+                          t('app.expenses.amount'),
+                          t('app.common.date'),
+                          t('app.expenses.method'),
+                          t('app.expenses.reference'),
+                        ]}
+                        values={[
+                          row.title,
+                          t(`app.expenses.cat.${row.category}`, { defaultValue: row.category }),
+                          formatMoney(row.amount),
+                          formatDate(row.spent_on, i18n.language),
+                          t(`app.expenses.pay.${row.method}`, { defaultValue: row.method }),
+                          row.reference ?? '',
+                        ]}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(row)}
+                        className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap cursor-pointer ${
+                          confirmId === row.id
+                            ? 'bg-primary-500 text-background-50 border-primary-500'
+                            : 'border-background-300 text-foreground-700 hover:border-primary-400'
+                        }`}
+                      >
+                        <i className={confirmId === row.id ? 'ri-check-line' : 'ri-delete-bin-line'} />
+                        {confirmId === row.id ? t('app.common.confirm') : t('app.common.delete')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block">
             <TableWrap>
               <thead className="bg-background-100 border-b border-background-200">
                 <tr>
@@ -193,23 +295,46 @@ export default function ExpensesPage() {
                     </Td>
                     <Td className="text-xs tabular-nums whitespace-nowrap">{row.reference ?? '—'}</Td>
                     <Td>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete(row)}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap cursor-pointer ${
-                          confirmId === row.id
-                            ? 'bg-primary-500 text-background-50 border-primary-500'
-                            : 'border-background-300 text-foreground-700 hover:border-primary-400'
-                        }`}
-                      >
-                        <i className={confirmId === row.id ? 'ri-check-line' : 'ri-delete-bin-line'} />
-                        {confirmId === row.id ? t('app.common.confirm') : t('app.common.delete')}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <RecordPrintButton
+                          title={`${t('app.expenses.title')} — ${row.title}`}
+                          columns={[
+                            t('app.expenses.item'),
+                            t('app.expenses.category'),
+                            t('app.expenses.amount'),
+                            t('app.common.date'),
+                            t('app.expenses.method'),
+                            t('app.expenses.reference'),
+                          ]}
+                          values={[
+                            row.title,
+                            t(`app.expenses.cat.${row.category}`, { defaultValue: row.category }),
+                            formatMoney(row.amount),
+                            formatDate(row.spent_on, i18n.language),
+                            t(`app.expenses.pay.${row.method}`, { defaultValue: row.method }),
+                            row.reference ?? '',
+                          ]}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(row)}
+                          className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap cursor-pointer ${
+                            confirmId === row.id
+                              ? 'bg-primary-500 text-background-50 border-primary-500'
+                              : 'border-background-300 text-foreground-700 hover:border-primary-400'
+                          }`}
+                        >
+                          <i className={confirmId === row.id ? 'ri-check-line' : 'ri-delete-bin-line'} />
+                          {confirmId === row.id ? t('app.common.confirm') : t('app.common.delete')}
+                        </button>
+                      </div>
                     </Td>
                   </Row>
                 ))}
               </tbody>
             </TableWrap>
+            </div>
+            </>
           )}
         </Card>
       )}

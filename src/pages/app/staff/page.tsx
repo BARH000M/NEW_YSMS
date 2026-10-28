@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchStaff } from '@/api/college';
 import { formatDate } from '@/utils/date';
+import { formatMoney, toNumber } from '@/utils/money';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Avatar,
   Badge,
@@ -16,6 +18,7 @@ import {
   StatCard,
   StatusPill,
   TableWrap,
+  Tabs,
   Td,
   Th,
 } from '@/components/app/ui';
@@ -23,30 +26,85 @@ import {
 export default function StaffPage() {
   const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
+  const [tab, setTab] = useState('all');
 
   const state = useAsync(fetchStaff, []);
   const list = state.data ?? [];
 
+  const activeCount = list.filter((member) => member.is_active).length;
+  const inactiveCount = list.length - activeCount;
+  const payroll = list
+    .filter((member) => member.is_active)
+    .reduce((sum, member) => sum + toNumber(member.base_salary), 0);
+
+  const tabbed = useMemo(() => {
+    if (tab === 'active') return list.filter((member) => member.is_active);
+    if (tab === 'inactive') return list.filter((member) => !member.is_active);
+    return list;
+  }, [list, tab]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter(
+    if (!needle) return tabbed;
+    return tabbed.filter(
       (member) =>
         member.full_name.toLowerCase().includes(needle) ||
+        (member.full_name_ar ?? '').toLowerCase().includes(needle) ||
         (member.staff_no ?? '').toLowerCase().includes(needle) ||
-        (member.designation ?? '').toLowerCase().includes(needle),
+        (member.designation ?? '').toLowerCase().includes(needle) ||
+        (member.department ?? '').toLowerCase().includes(needle),
     );
-  }, [list, query]);
+  }, [tabbed, query]);
 
   if (state.loading) return <LoadingBlock />;
   if (state.error) return <ErrorState message={state.error} onRetry={state.reload} />;
 
-  const activeCount = list.filter((member) => member.is_active).length;
-  const payroll = list.filter((member) => member.is_active).reduce((sum, member) => sum + Number(member.base_salary ?? 0), 0);
+  const contractLabel = (value: string | null) =>
+    t(`app.status.${value}`, { defaultValue: value ?? '—' });
+
+  const exportRows = filtered.map((member) => [
+    member.full_name,
+    member.full_name_ar ?? '',
+    member.staff_no ?? '',
+    member.designation ?? '',
+    member.department ?? '',
+    member.join_date ? formatDate(member.join_date, i18n.language) : '',
+    contractLabel(member.contract_type),
+    toNumber(member.base_salary),
+    member.is_active ? t('app.common.active') : t('app.common.inactive'),
+  ]);
+
+  const exportColumns = [
+    t('app.common.name'),
+    `${t('app.common.name')} (AR)`,
+    t('app.staff.staffNo'),
+    t('app.staff.designation'),
+    t('app.staff.department'),
+    t('app.staff.joinDate'),
+    t('app.staff.contract'),
+    t('app.staff.salary'),
+    t('app.common.status'),
+  ];
 
   return (
     <>
-      <PageHeader title={t('app.staff.title')} subtitle={`${list.length} ${t('app.staff.count')} · ${t('app.staff.subtitle')}`} />
+      <PageHeader
+        title={t('app.staff.title')}
+        subtitle={`${list.length} ${t('app.staff.count')} · ${t('app.staff.subtitle')}`}
+        action={
+          <ExportBar
+            title={`${t('app.staff.title')} — ${t('app.nav.brand')}`}
+            fileName="staff-register"
+            columns={exportColumns}
+            rows={exportRows}
+            hint={tab === 'all' ? t('app.common.all') : t(`app.common.${tab}`)}
+            summary={[
+              { label: t('app.staff.count'), value: String(filtered.length) },
+              { label: t('app.staff.payroll'), value: formatMoney(payroll) },
+            ]}
+          />
+        }
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
         <StatCard label={t('app.staff.title')} value={list.length} icon="ri-team-line" tone="primary" />
@@ -60,7 +118,20 @@ export default function StaffPage() {
       </div>
 
       <Card className="p-3 md:p-4 mb-3 md:mb-4">
-        <SearchBox value={query} onChange={setQuery} />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <Tabs
+            value={tab}
+            onChange={setTab}
+            items={[
+              { key: 'all', label: t('app.common.all'), count: list.length },
+              { key: 'active', label: t('app.common.active'), count: activeCount },
+              { key: 'inactive', label: t('app.common.inactive'), count: inactiveCount },
+            ]}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchBox value={query} onChange={setQuery} />
+          </div>
+        </div>
       </Card>
 
       <Card>
@@ -76,6 +147,7 @@ export default function StaffPage() {
                 <Th>{t('app.staff.department')}</Th>
                 <Th>{t('app.staff.joinDate')}</Th>
                 <Th>{t('app.staff.contract')}</Th>
+                <Th>{t('app.staff.salary')}</Th>
                 <Th>{t('app.common.status')}</Th>
               </tr>
             </thead>
@@ -99,7 +171,10 @@ export default function StaffPage() {
                   <Td className="text-xs whitespace-nowrap">
                     {member.join_date ? formatDate(member.join_date, i18n.language) : '—'}
                   </Td>
-                  <Td className="text-xs">{t(`app.status.${member.contract_type}`, { defaultValue: member.contract_type })}</Td>
+                  <Td className="text-xs">{contractLabel(member.contract_type)}</Td>
+                  <Td className="text-xs font-semibold tabular-nums whitespace-nowrap">
+                    {member.base_salary === null ? '—' : formatMoney(member.base_salary)}
+                  </Td>
                   <Td>
                     <StatusPill value={member.is_active ? 'active' : 'suspended'} />
                   </Td>

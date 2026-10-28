@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { listAccess, revokeRole } from '@/api/roles';
 import type { AccessUser } from '@/api/roles';
 import { formatDate } from '@/utils/date';
+import ExportBar from '@/components/app/ExportBar';
 import {
   Badge,
   Card,
@@ -121,6 +122,32 @@ export default function RolesPage() {
         subtitle={t('app.roles.subtitle')}
         action={
           <div className="flex items-center gap-2">
+            <ExportBar
+              title={`${t('app.roles.title')} — ${t('app.nav.brand')}`}
+              fileName="access-accounts"
+              columns={[
+                t('app.roles.account'),
+                t('app.common.email'),
+                t('app.roles.role'),
+                t('app.common.status'),
+                t('app.roles.lastSignIn'),
+              ]}
+              rows={rows.map((entry) => [
+                entry.fullName ?? '',
+                entry.email,
+                entry.role ? t(`app.role.${entry.role}`, { defaultValue: entry.role }) : t('app.roles.noRole'),
+                entry.role
+                  ? entry.isActive
+                    ? t('app.common.active')
+                    : t('app.common.inactive')
+                  : '',
+                entry.lastSignInAt ? formatDate(entry.lastSignInAt, i18n.language) : t('app.roles.never'),
+              ])}
+              summary={[
+                { label: t('app.roles.totalAccounts'), value: String(users.length) },
+                { label: t('app.roles.assigned'), value: String(assigned) },
+              ]}
+            />
             <Link
               to="/app/account-links"
               className="inline-flex items-center gap-1.5 border border-background-300 text-foreground-800 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"

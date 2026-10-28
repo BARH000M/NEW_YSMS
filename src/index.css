@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -72,6 +71,10 @@
 
 html { scroll-behavior: smooth; }
 body { font-family: var(--font-body); background: oklch(var(--background-50)); color: oklch(var(--foreground-950)); }
+
+/* Safety net: a single over-wide row must never let the whole page slide
+   sideways on a phone. `clip` (unlike hidden) keeps sticky headers sticky. */
+#root { overflow-x: clip; }
 
 html[dir='rtl'] {
   --font-heading: 'Noto Kufi Arabic', sans-serif;

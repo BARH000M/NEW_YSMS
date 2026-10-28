@@ -33,6 +33,7 @@ import {
   Td,
   Th,
 } from '@/components/app/ui';
+import ExportBar from '@/components/app/ExportBar';
 import AttendanceTrend from './components/AttendanceTrend';
 import FollowUpList from './components/FollowUpList';
 import type { FollowUpRow } from './components/FollowUpList';
@@ -266,17 +267,44 @@ export default function AttendancePage() {
         title={t('app.attendance.title')}
         subtitle={t('app.attendance.subtitle')}
         action={
-          canWrite ? (
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={busy || !sectionId || sectionStudents.length === 0}
-              className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
-            >
-              <i className="ri-save-3-line" />
-              {busy ? t('app.common.saving') : t('app.attendance.saveDay')}
-            </button>
-          ) : null
+          <>
+            <ExportBar
+              title={`${t('app.attendance.title')} — ${date}`}
+              fileName={`attendance-${date}`}
+              columns={[
+                t('app.common.name'),
+                t('app.students.studentNo'),
+                t('app.common.status'),
+                t('app.marks.remarks'),
+              ]}
+              rows={visibleStudents.map((student) => {
+                const entry = draft[student.id];
+                return [
+                  `${student.first_name} ${student.last_name ?? ''}`.trim(),
+                  student.student_no ?? '',
+                  t(statusStyle[entry?.status ?? 'present'].label),
+                  entry?.remarks ?? '',
+                ];
+              })}
+              hint={sectionOptions.find((option) => option.id === sectionId)?.label ?? t('app.attendance.title')}
+              summary={[
+                { label: t('app.attendance.present'), value: String(counts.present) },
+                { label: t('app.attendance.absent'), value: String(counts.absent) },
+                { label: t('app.attendance.rate'), value: `${dayRate}%` },
+              ]}
+            />
+            {canWrite ? (
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={busy || !sectionId || sectionStudents.length === 0}
+                className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-background-50 text-xs font-semibold px-3.5 py-2.5 rounded-md whitespace-nowrap cursor-pointer"
+              >
+                <i className="ri-save-3-line" />
+                {busy ? t('app.common.saving') : t('app.attendance.saveDay')}
+              </button>
+            ) : null}
+          </>
         }
       />
 
@@ -376,68 +404,126 @@ export default function AttendancePage() {
         ) : visibleStudents.length === 0 ? (
           <EmptyState label={t('app.attendance.noStudents')} icon="ri-user-search-line" />
         ) : (
-          <TableWrap>
-            <thead className="bg-background-100 border-b border-background-200">
-              <tr>
-                <Th>{t('app.common.name')}</Th>
-                <Th>{t('app.students.studentNo')}</Th>
-                <Th>{t('app.common.status')}</Th>
-                <Th>{t('app.marks.remarks')}</Th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Phones: each student gets a compact attendance card. */}
+            <ul className="md:hidden">
               {visibleStudents.map((student) => {
                 const entry = draft[student.id] ?? { status: 'present' as AttendanceStatus, remarks: '' };
                 return (
-                  <Row key={student.id}>
-                    <Td>
-                      <p className="text-sm font-medium text-foreground-950 truncate max-w-[180px]">
-                        {student.first_name} {student.last_name ?? ''}
-                      </p>
-                      <p className="text-[11px] text-foreground-500 truncate">
-                        {student.first_name_ar} {student.last_name_ar}
-                      </p>
-                    </Td>
-                    <Td className="text-xs tabular-nums whitespace-nowrap">{student.student_no ?? '—'}</Td>
-                    <Td>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {ATTENDANCE_STATUSES.map((status) => {
-                          const active = entry.status === status;
-                          return (
-                            <button
-                              key={status}
-                              type="button"
-                              disabled={!canWrite}
-                              onClick={() => setStatus(student.id, status)}
-                              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                                canWrite ? 'cursor-pointer' : 'cursor-default'
-                              } ${
-                                active
-                                  ? statusStyle[status].on
-                                  : 'bg-background-50 text-foreground-600 border-background-300 hover:border-primary-400'
-                              }`}
-                            >
-                              {t(statusStyle[status].label)}
-                            </button>
-                          );
-                        })}
+                  <li key={student.id} className="border-b border-background-100 last:border-b-0 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground-950 truncate">
+                          {student.first_name} {student.last_name ?? ''}
+                        </p>
+                        <p className="text-[11px] text-foreground-500 truncate">
+                          {student.first_name_ar} {student.last_name_ar}
+                        </p>
                       </div>
-                    </Td>
-                    <Td>
-                      <input
-                        type="text"
-                        value={entry.remarks}
-                        disabled={!canWrite}
-                        onChange={(event) => setRemarks(student.id, event.target.value)}
-                        placeholder={t('app.marks.remarks')}
-                        className="w-full sm:w-48 box-border bg-background-50 border border-background-300 rounded-md px-2 py-1.5 text-xs text-foreground-900 placeholder:text-foreground-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 disabled:opacity-60"
-                      />
-                    </Td>
-                  </Row>
+                      <span className="shrink-0 text-[11px] font-medium text-foreground-600 tabular-nums">
+                        {student.student_no ?? '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      {ATTENDANCE_STATUSES.map((status) => {
+                        const active = entry.status === status;
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            disabled={!canWrite}
+                            onClick={() => setStatus(student.id, status)}
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                              canWrite ? 'cursor-pointer' : 'cursor-default'
+                            } ${
+                              active
+                                ? statusStyle[status].on
+                                : 'bg-background-50 text-foreground-600 border-background-300'
+                            }`}
+                          >
+                            {t(statusStyle[status].label)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input
+                      type="text"
+                      value={entry.remarks}
+                      disabled={!canWrite}
+                      onChange={(event) => setRemarks(student.id, event.target.value)}
+                      placeholder={t('app.marks.remarks')}
+                      className="w-full box-border mt-2 bg-background-50 border border-background-300 rounded-md px-2 py-1.5 text-xs text-foreground-900 placeholder:text-foreground-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 disabled:opacity-60"
+                    />
+                  </li>
                 );
               })}
-            </tbody>
-          </TableWrap>
+            </ul>
+
+            <div className="hidden md:block">
+              <TableWrap>
+                <thead className="bg-background-100 border-b border-background-200">
+                  <tr>
+                    <Th>{t('app.common.name')}</Th>
+                    <Th>{t('app.students.studentNo')}</Th>
+                    <Th>{t('app.common.status')}</Th>
+                    <Th>{t('app.marks.remarks')}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleStudents.map((student) => {
+                    const entry = draft[student.id] ?? { status: 'present' as AttendanceStatus, remarks: '' };
+                    return (
+                      <Row key={student.id}>
+                        <Td>
+                          <p className="text-sm font-medium text-foreground-950 truncate max-w-[180px]">
+                            {student.first_name} {student.last_name ?? ''}
+                          </p>
+                          <p className="text-[11px] text-foreground-500 truncate">
+                            {student.first_name_ar} {student.last_name_ar}
+                          </p>
+                        </Td>
+                        <Td className="text-xs tabular-nums whitespace-nowrap">{student.student_no ?? '—'}</Td>
+                        <Td>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {ATTENDANCE_STATUSES.map((status) => {
+                              const active = entry.status === status;
+                              return (
+                                <button
+                                  key={status}
+                                  type="button"
+                                  disabled={!canWrite}
+                                  onClick={() => setStatus(student.id, status)}
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                                    canWrite ? 'cursor-pointer' : 'cursor-default'
+                                  } ${
+                                    active
+                                      ? statusStyle[status].on
+                                      : 'bg-background-50 text-foreground-600 border-background-300 hover:border-primary-400'
+                                  }`}
+                                >
+                                  {t(statusStyle[status].label)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </Td>
+                        <Td>
+                          <input
+                            type="text"
+                            value={entry.remarks}
+                            disabled={!canWrite}
+                            onChange={(event) => setRemarks(student.id, event.target.value)}
+                            placeholder={t('app.marks.remarks')}
+                            className="w-full sm:w-48 box-border bg-background-50 border border-background-300 rounded-md px-2 py-1.5 text-xs text-foreground-900 placeholder:text-foreground-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400 disabled:opacity-60"
+                          />
+                        </Td>
+                      </Row>
+                    );
+                  })}
+                </tbody>
+              </TableWrap>
+            </div>
+          </>
         )}
       </Card>
 
