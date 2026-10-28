@@ -163,6 +163,11 @@ Migration triple: `docs/migrations/002_enrollment_documents_forward.sql`, `_roll
 - **Link** attaches an existing login by email. **Create account** provisions a login with a generated one-time temporary password shown once with a copy button, then links it. Both paths upsert the `profiles` identity row, release any previous link on that entity type (identity is 1:1), upsert the role, and write `audit_log`. **Unlink** clears only the link — the login is never deleted.
 - Verified baseline before this work: **0 of 36 students, 0 of 8 staff, 0 of 36 guardians** had a linked account. Linking is now a supported, audited operation, which is the prerequisite for every portal.
 
+### Phase 1.5 — Live security close-out + database health page (done)
+
+- **Row-level security is now enforced on the live backend for all 13 campus tables.** Twelve of them (`admission_details`, `student_siblings`, `transport_vehicles`, `transport_routes`, `transport_route_stops`, `transport_allocations`, `hostels`, `hostel_room_types`, `hostel_rooms`, `hostel_allocations`, `income_heads`, `other_incomes`) had the policies from migration 008 defined but the switch still off, so those rules were inert. Verified after execution: all 13 report `relrowsecurity = true` with 2 policies each. Nothing was deleted or restructured; a single `disable row level security` reverses it.
+- **`/app/database-health`** — a read-only integrity sweep for admins and the platform owner, also in the Administration menu. It runs 19 checks over 14 tables and flags two failure classes: **orphans** (student→section, guardian links, year placements, invoices, invoice lines, payments, exam marks, attendance, transport and hostel allocations) and **duplicates** (student no., invoice no., receipt no., paper+student marks, student+day attendance, student+year placement). Each finding expands to the affected rows with the student name, and the filtered list prints / exports to CSV through the shared `ExportBar`. The sweep compares id sets in the browser, so it stays one round of parallel reads, respects RLS, and mutates nothing. Live baseline immediately after the RLS change: **19/19 checks clean, 0 orphan rows, 0 duplicate rows**.
+
 ---
 
 ## 9. Client Reference Plan — Crosswalk

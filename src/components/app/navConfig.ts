@@ -167,6 +167,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: 'app.nav.calendar', to: '/app/calendar', icon: 'ri-calendar-line', roles: SELF_SERVICE },
       { key: 'app.nav.roles', to: '/app/roles', icon: 'ri-shield-user-line', roles: ADMIN },
       { key: 'app.nav.accounts', to: '/app/account-links', icon: 'ri-link-m', roles: ADMIN },
+      { key: 'app.nav.databaseHealth', to: '/app/database-health', icon: 'ri-database-2-line', roles: ADMIN },
       { key: 'app.nav.settings', to: '/app/settings', icon: 'ri-equalizer-2-line', roles: ADMIN },
     ],
   },

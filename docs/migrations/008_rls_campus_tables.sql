@@ -1,24 +1,23 @@
 -- 008_rls_campus_tables.sql
 -- Row-level security for the campus modules added in 007.
 --
--- STATUS (2026-10-28)
---   DONE  : all 26 policies below are created on the live backend — every one
---           of the 13 tables now has a read rule and a write rule.
---   DONE  : student_profile_extras — RLS ENABLED (it was on with zero rules,
---           which meant nobody could read it; the rules below fixed that).
---   PENDING: `enable row level security` on the 12 remaining tables. The rules
---           are defined but the switch is still off, so they are not yet
---           enforced. Run section 1 to finish the job.
---           (The backend confirmation channel accepts one privileged script per
---           turn, so section 1 needs its own turn.)
+-- STATUS (2026-10-28) — APPLIED AND VERIFIED ON THE LIVE BACKEND
+--   DONE  : all 26 policies below exist on the live backend.
+--   DONE  : `enable row level security` is now ON for all 13 tables
+--           (student_profile_extras + the 12 that were still open).
+--           Verified after execution: every one of the 13 reports
+--           relrowsecurity = true and policy_count = 2.
 --
--- AFTER THIS FILE: re-run the query at the bottom of the file to confirm
--- every table reports rls_enabled = true and policy_count >= 2.
+-- REVERSIBLE: `alter table <t> disable row level security;` turns any single
+-- table back, nothing is deleted and no rows were modified.
+--
+-- Re-run the query at the bottom of the file any time to confirm
+-- rls_enabled = true and policy_count >= 2 everywhere.
 
 -- ---------------------------------------------------------------------------
--- 1. Enable row level security (one statement per table)
+-- 1. Enable row level security (one statement per table) — ALL DONE
 -- ---------------------------------------------------------------------------
--- alter table public.student_profile_extras enable row level security;   -- DONE
+alter table public.student_profile_extras enable row level security;
 alter table public.admission_details enable row level security;
 alter table public.student_siblings enable row level security;
 alter table public.transport_vehicles enable row level security;

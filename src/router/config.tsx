@@ -65,6 +65,7 @@ const HostelPage = lazy(() => import('@/pages/app/hostel/page'));
 
 const RolesPage = lazy(() => import('@/pages/app/roles/page'));
 const AccountLinksPage = lazy(() => import('@/pages/app/account-links/page'));
+const DatabaseHealthPage = lazy(() => import('@/pages/app/database-health/page'));
 
 const routes: RouteObject[] = [
   { path: '/', element: <Home /> },
@@ -422,6 +423,14 @@ const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <AccountLinksPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/app/database-health',
+    element: (
+      <RequireAuth>
+        <DatabaseHealthPage />
       </RequireAuth>
     ),
   },

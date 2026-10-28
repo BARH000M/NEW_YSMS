@@ -1,0 +1,558 @@
+import { supabase } from './supabaseClient';
+
+/**
+ * Database health — read-only integrity sweep for staff.
+ *
+ * Two families of problems only, because they are the two that silently rot a
+ * school database:
+ *   1. ORPHANS  — a row pointing at a parent that no longer exists. Nothing
+ *                 errors at write time, the record just becomes invisible.
+ *   2. DUPLICATES — the same fact stored twice (a student marked twice on one
+ *                 day, two invoices with one number), which quietly doubles
+ *                 money or attendance.
+ *
+ * Every check is a plain read against the live tables, so it respects RLS and
+ * never mutates anything. Comparisons happen in the browser over id sets,
+ * which keeps the whole sweep to one round of parallel queries.
+ */
+
+export type HealthCategory = 'orphan' | 'duplicate';
+
+export interface HealthIssue {
+  /** Stable row key for React lists. */
+  id: string;
+  /** Human-readable subject of the problem (usually a student). */
+  label: string;
+  /** What exactly is wrong, e.g. "student_no STU-2026-00114". */
+  detail: string;
+}
+
+export interface HealthCheck {
+  key: string;
+  category: HealthCategory;
+  /** Table the offending rows live in. */
+  table: string;
+  /** Parent table the row should have matched, when relevant. */
+  parent: string | null;
+  count: number;
+  rows: HealthIssue[];
+}
+
+export interface HealthReport {
+  checks: HealthCheck[];
+  orphans: number;
+  duplicates: number;
+  cleanChecks: number;
+  totalChecks: number;
+  tablesScanned: number;
+  ranAt: string;
+}
+
+/** Rows pulled per table. Well above any real school's row count, still bounded. */
+const ROW_LIMIT = 20000;
+
+/** How many offending rows are kept for display per check. */
+const DISPLAY_LIMIT = 25;
+
+interface StudentLite {
+  id: string;
+  student_no: string | null;
+  first_name: string;
+  last_name: string | null;
+  section_id: string | null;
+}
+
+interface IdLite {
+  id: string;
+}
+
+interface InvoiceLite {
+  id: string;
+  invoice_no: string;
+  student_id: string;
+}
+
+interface GuardianLite {
+  id: string;
+  full_name: string;
+}
+
+interface ExamLite {
+  id: string;
+  name: string;
+}
+
+interface ExamResultLite {
+  id: string;
+  exam_id: string;
+  exam_subject_id: string;
+  student_id: string;
+  marks_obtained: number | string | null;
+}
+
+interface AttendanceLite {
+  id: string;
+  student_id: string;
+  attendance_date: string;
+  status: string;
+}
+
+interface EnrollmentLite {
+  id: string;
+  student_id: string;
+  academic_year_id: string;
+  status: string;
+}
+
+interface PlacementLite {
+  id: string;
+  student_id: string;
+}
+
+interface InvoiceItemLite {
+  id: string;
+  invoice_id: string;
+  description: string | null;
+}
+
+interface PaymentLite {
+  id: string;
+  invoice_id: string;
+  student_id: string | null;
+  receipt_no: string | null;
+  amount: number | string | null;
+}
+
+interface GuardianLinkLite {
+  id: string;
+  student_id: string;
+  guardian_id: string;
+}
+
+interface YearLite {
+  id: string;
+  name: string;
+}
+
+async function fetchRows<T>(table: string, columns: string): Promise<T[]> {
+  const { data, error } = await supabase.from(table).select(columns).limit(ROW_LIMIT);
+  if (error) throw new Error(`${table}: ${error.message}`);
+  return (data ?? []) as T[];
+}
+
+const ids = <T extends IdLite>(rows: T[]): Set<string> => new Set(rows.map((row) => row.id));
+
+const shortId = (value: string | null | undefined): string =>
+  value ? `${value.slice(0, 8)}…` : '—';
+
+/** Orphan result builder — keeps the check definition to a single object. */
+function orphanCheck(input: {
+  key: string;
+  table: string;
+  parent: string;
+  offenders: HealthIssue[];
+}): HealthCheck {
+  return {
+    key: input.key,
+    category: 'orphan',
+    table: input.table,
+    parent: input.parent,
+    count: input.offenders.length,
+    rows: input.offenders.slice(0, DISPLAY_LIMIT),
+  };
+}
+
+/** Group rows by a natural key; every group with more than one row is a duplicate. */
+function duplicateCheck(input: {
+  key: string;
+  table: string;
+  grouped: { group: string; issue: HealthIssue }[];
+}): HealthCheck {
+  const buckets = new Map<string, HealthIssue[]>();
+  input.grouped.forEach(({ group, issue }) => {
+    const bucket = buckets.get(group) ?? [];
+    bucket.push(issue);
+    buckets.set(group, bucket);
+  });
+  const offenders: HealthIssue[] = [];
+  buckets.forEach((bucket) => {
+    if (bucket.length > 1) offenders.push(...bucket);
+  });
+  return {
+    key: input.key,
+    category: 'duplicate',
+    table: input.table,
+    parent: null,
+    count: offenders.length,
+    rows: offenders.slice(0, DISPLAY_LIMIT),
+  };
+}
+
+/**
+ * Run every check. Throws only when a table read itself fails (permissions or
+ * a missing table) so the page can show a real error instead of "all clean".
+ */
+export async function runDatabaseHealth(): Promise<HealthReport> {
+  const [
+    students,
+    sections,
+    guardians,
+    exams,
+    invoices,
+    invoiceItems,
+    payments,
+    examResults,
+    attendance,
+    enrollments,
+    transportAllocations,
+    hostelAllocations,
+    guardianLinks,
+    academicYears,
+  ] = await Promise.all([
+    fetchRows<StudentLite>('students', 'id, student_no, first_name, last_name, section_id'),
+    fetchRows<IdLite>('sections', 'id'),
+    fetchRows<GuardianLite>('guardians', 'id, full_name'),
+    fetchRows<ExamLite>('exams', 'id, name'),
+    fetchRows<InvoiceLite>('invoices', 'id, invoice_no, student_id'),
+    fetchRows<InvoiceItemLite>('invoice_items', 'id, invoice_id, description'),
+    fetchRows<PaymentLite>('payments', 'id, invoice_id, student_id, receipt_no, amount'),
+    fetchRows<ExamResultLite>(
+      'exam_results',
+      'id, exam_id, exam_subject_id, student_id, marks_obtained',
+    ),
+    fetchRows<AttendanceLite>('attendance', 'id, student_id, attendance_date, status'),
+    fetchRows<EnrollmentLite>('enrollments', 'id, student_id, academic_year_id, status'),
+    fetchRows<PlacementLite>('transport_allocations', 'id, student_id'),
+    fetchRows<PlacementLite>('hostel_allocations', 'id, student_id'),
+    fetchRows<GuardianLinkLite>('student_guardians', 'id, student_id, guardian_id'),
+    fetchRows<YearLite>('academic_years', 'id, name'),
+  ]);
+
+  const studentMap = new Map(students.map((row) => [row.id, row]));
+  const sectionIds = ids(sections);
+  const guardianIds = ids(guardians);
+  const examIds = ids(exams);
+  const invoiceIds = ids(invoices);
+  const examMap = new Map(exams.map((row) => [row.id, row]));
+  const yearMap = new Map(academicYears.map((row) => [row.id, row]));
+
+  const studentName = (studentId: string | null): string => {
+    if (!studentId) return '—';
+    const student = studentMap.get(studentId);
+    if (!student) return `Unknown student ${shortId(studentId)}`;
+    return `${student.first_name} ${student.last_name ?? ''}`.trim();
+  };
+
+  const checks: HealthCheck[] = [];
+
+  // ---------------------------------------------------------------- orphans
+
+  checks.push(
+    orphanCheck({
+      key: 'students_section',
+      table: 'students',
+      parent: 'sections',
+      offenders: students
+        .filter((row) => row.section_id && !sectionIds.has(row.section_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.id),
+          detail: `section_id ${shortId(row.section_id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'guardian_link_student',
+      table: 'student_guardians',
+      parent: 'students',
+      offenders: guardianLinks
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `link ${shortId(row.id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'guardian_link_guardian',
+      table: 'student_guardians',
+      parent: 'guardians',
+      offenders: guardianLinks
+        .filter((row) => !guardianIds.has(row.guardian_id))
+        .map((row) => ({
+          id: row.id,
+          label: guardians.find((g) => g.id === row.guardian_id)?.full_name ?? 'Unknown guardian',
+          detail: `guardian_id ${shortId(row.guardian_id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'enrollment_student',
+      table: 'enrollments',
+      parent: 'students',
+      offenders: enrollments
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `${yearMap.get(row.academic_year_id)?.name ?? shortId(row.academic_year_id)} · ${row.status}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'invoice_student',
+      table: 'invoices',
+      parent: 'students',
+      offenders: invoices
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `invoice ${row.invoice_no}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'invoice_item_invoice',
+      table: 'invoice_items',
+      parent: 'invoices',
+      offenders: invoiceItems
+        .filter((row) => !invoiceIds.has(row.invoice_id))
+        .map((row) => ({
+          id: row.id,
+          label: row.description ?? 'Invoice line',
+          detail: `invoice_id ${shortId(row.invoice_id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'payment_invoice',
+      table: 'payments',
+      parent: 'invoices',
+      offenders: payments
+        .filter((row) => !invoiceIds.has(row.invoice_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `receipt ${row.receipt_no ?? shortId(row.id)} · amount ${row.amount ?? 0}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'payment_student',
+      table: 'payments',
+      parent: 'students',
+      offenders: payments
+        .filter((row) => row.student_id && !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `receipt ${row.receipt_no ?? shortId(row.id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'result_student',
+      table: 'exam_results',
+      parent: 'students',
+      offenders: examResults
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `marks ${row.marks_obtained ?? 0}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'result_exam',
+      table: 'exam_results',
+      parent: 'exams',
+      offenders: examResults
+        .filter((row) => !examIds.has(row.exam_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `exam_id ${shortId(row.exam_id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'attendance_student',
+      table: 'attendance',
+      parent: 'students',
+      offenders: attendance
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `${row.attendance_date} · ${row.status}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'transport_student',
+      table: 'transport_allocations',
+      parent: 'students',
+      offenders: transportAllocations
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `allocation ${shortId(row.id)}`,
+        })),
+    }),
+  );
+
+  checks.push(
+    orphanCheck({
+      key: 'hostel_student',
+      table: 'hostel_allocations',
+      parent: 'students',
+      offenders: hostelAllocations
+        .filter((row) => !studentMap.has(row.student_id))
+        .map((row) => ({
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `allocation ${shortId(row.id)}`,
+        })),
+    }),
+  );
+
+  // ------------------------------------------------------------- duplicates
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_student_no',
+      table: 'students',
+      grouped: students
+        .filter((row) => Boolean(row.student_no))
+        .map((row) => ({
+          group: String(row.student_no).trim().toLowerCase(),
+          issue: {
+            id: row.id,
+            label: studentName(row.id),
+            detail: `student_no ${row.student_no}`,
+          },
+        })),
+    }),
+  );
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_invoice_no',
+      table: 'invoices',
+      grouped: invoices.map((row) => ({
+        group: String(row.invoice_no).trim().toLowerCase(),
+        issue: {
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `invoice ${row.invoice_no}`,
+        },
+      })),
+    }),
+  );
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_receipt_no',
+      table: 'payments',
+      grouped: payments
+        .filter((row) => Boolean(row.receipt_no))
+        .map((row) => ({
+          group: String(row.receipt_no).trim().toLowerCase(),
+          issue: {
+            id: row.id,
+            label: studentName(row.student_id),
+            detail: `receipt ${row.receipt_no} · amount ${row.amount ?? 0}`,
+          },
+        })),
+    }),
+  );
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_exam_result',
+      table: 'exam_results',
+      grouped: examResults.map((row) => ({
+        group: `${row.exam_subject_id}:${row.student_id}`,
+        issue: {
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `${examMap.get(row.exam_id)?.name ?? 'Exam'} · marks ${row.marks_obtained ?? 0}`,
+        },
+      })),
+    }),
+  );
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_attendance',
+      table: 'attendance',
+      grouped: attendance.map((row) => ({
+        group: `${row.student_id}:${row.attendance_date}`,
+        issue: {
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: `${row.attendance_date} · ${row.status}`,
+        },
+      })),
+    }),
+  );
+
+  checks.push(
+    duplicateCheck({
+      key: 'dup_enrollment',
+      table: 'enrollments',
+      grouped: enrollments.map((row) => ({
+        group: `${row.student_id}:${row.academic_year_id}`,
+        issue: {
+          id: row.id,
+          label: studentName(row.student_id),
+          detail: yearMap.get(row.academic_year_id)?.name ?? shortId(row.academic_year_id),
+        },
+      })),
+    }),
+  );
+
+  const orphanRows = checks.filter((c) => c.category === 'orphan').reduce((sum, c) => sum + c.count, 0);
+  const duplicateRows = checks
+    .filter((c) => c.category === 'duplicate')
+    .reduce((sum, c) => sum + c.count, 0);
+
+  return {
+    checks,
+    orphans: orphanRows,
+    duplicates: duplicateRows,
+    cleanChecks: checks.filter((c) => c.count === 0).length,
+    totalChecks: checks.length,
+    tablesScanned: 14,
+    ranAt: new Date().toISOString(),
+  };
+}
+
+/** Guard for the page: only the two roles that own the platform may open it. */
+export const HEALTH_ROLES = ['super_admin', 'admin'];
