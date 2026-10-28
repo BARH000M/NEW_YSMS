@@ -1,0 +1,63 @@
+export default {
+  'brand.name': 'Yemen Sai Educational College',
+  'brand.short': 'SAI College',
+  'brand.tagline': 'Education that connects Yemen and China',
+  'brand.since': 'Founded in 2009',
+
+  'nav.home': 'Home',
+  'nav.about': 'About',
+  'nav.programs': 'Programs',
+  'nav.system': 'System',
+  'nav.news': 'News',
+  'nav.admission': 'Online Admission',
+  'nav.complain': 'Complain',
+  'nav.contact': 'Contact Us',
+  'nav.console': 'Management',
+
+  'action.applyNow': 'Apply Now',
+  'action.apply': 'Apply',
+  'action.explorePrograms': 'Explore Programs',
+  'action.learnMore': 'Learn more',
+  'action.send': 'Send',
+  'action.sending': 'Sending...',
+  'action.backHome': 'Back to home',
+  'action.viewMap': 'View on the map',
+  'action.chatWhatsapp': 'Chat on WhatsApp',
+
+  'top.latestNews': 'Latest News',
+  'top.openAdmissions': 'Admissions 2026 are open',
+
+  'lang.switch': 'Language',
+
+  'address': 'Remax roundabout, Haddad street, Sanaa, Yemen',
+
+  'footer.about': 'Yemen Sai Educational College teaches Chinese language and career diplomas in Sanaa, with a certified team of Yemeni and Chinese instructors.',
+  'footer.quickLinks': 'Quick Links',
+  'footer.programs': 'Programs',
+  'footer.support': 'Support',
+  'footer.emailUs': 'Email Us',
+  'footer.address': 'Address',
+  'footer.contact': 'Contact',
+  'footer.rights': '© Yemen Sai Educational College 2026. All rights reserved.',
+  'footer.findUs': 'Find Us',
+
+  'form.fullName': 'Full name',
+  'form.phone': 'Phone',
+  'form.email': 'Email',
+  'form.message': 'Message',
+  'form.messagePlaceholder': 'Write your inquiry here',
+  'form.subject': 'Subject',
+  'form.program': 'Program',
+  'form.optional': 'optional',
+  'form.requiredHint': 'Fields marked with * are required.',
+  'form.characters': 'characters',
+  'form.successAdmission': 'Your application was received. The admissions office will contact you within two working days.',
+  'form.successComplain': 'Your complaint was received in confidence. We will respond as soon as possible.',
+  'form.successContact': 'Your message was sent successfully. Thank you for reaching out.',
+  'form.errorGeneric': 'The form could not be submitted. Please try again.',
+  'form.errorNetwork': 'Network error. Check your connection and try again.',
+  'form.errorLength': 'The message must be 500 characters or less.',
+
+  'notFound.title': 'Page not found',
+  'notFound.desc': 'The link may have changed or the page was removed. You can go back home or continue to online admission.'
+};

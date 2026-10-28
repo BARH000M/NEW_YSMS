@@ -1,0 +1,63 @@
+export default {
+  'brand.name': '也门赛艾教育学院',
+  'brand.short': '赛艾学院',
+  'brand.tagline': '以教育连接也门与中国',
+  'brand.since': '成立于 2009 年',
+
+  'nav.home': '首页',
+  'nav.about': '学院介绍',
+  'nav.programs': '课程项目',
+  'nav.system': '管理系统',
+  'nav.news': '新闻动态',
+  'nav.admission': '在线报名',
+  'nav.complain': '投诉建议',
+  'nav.contact': '联系我们',
+  'nav.console': '管理后台',
+
+  'action.applyNow': '立即报名',
+  'action.apply': '报名',
+  'action.explorePrograms': '浏览课程',
+  'action.learnMore': '了解更多',
+  'action.send': '发送',
+  'action.sending': '发送中...',
+  'action.backHome': '返回首页',
+  'action.viewMap': '在地图上查看',
+  'action.chatWhatsapp': 'WhatsApp 咨询',
+
+  'top.latestNews': '最新消息',
+  'top.openAdmissions': '2026 学年招生中',
+
+  'lang.switch': '语言',
+
+  'address': '也门萨那市哈达街雷马士环岛',
+
+  'footer.about': '也门赛艾教育学院位于萨那，开设中文与职业文凭课程，拥有中国与也门认证的专业师资团队。',
+  'footer.quickLinks': '快速链接',
+  'footer.programs': '课程',
+  'footer.support': '服务支持',
+  'footer.emailUs': '邮件联系',
+  'footer.address': '地址',
+  'footer.contact': '电话',
+  'footer.rights': '© 也门赛艾教育学院 2026。版权所有。',
+  'footer.findUs': '找到我们',
+
+  'form.fullName': '姓名',
+  'form.phone': '电话',
+  'form.email': '邮箱',
+  'form.message': '留言',
+  'form.messagePlaceholder': '请填写您的咨询内容',
+  'form.subject': '主题',
+  'form.program': '课程',
+  'form.optional': '选填',
+  'form.requiredHint': '带 * 的字段为必填项。',
+  'form.characters': '字',
+  'form.successAdmission': '报名表已收到，招生办公室将在两个工作日内与您联系。',
+  'form.successComplain': '您的投诉已保密接收，我们会尽快回复您。',
+  'form.successContact': '留言已成功发送，感谢您的联系。',
+  'form.errorGeneric': '表单提交失败，请稍后重试。',
+  'form.errorNetwork': '网络错误，请检查网络连接后重试。',
+  'form.errorLength': '留言不能超过 500 个字符。',
+
+  'notFound.title': '页面不存在',
+  'notFound.desc': '链接可能已变更，或该页面已被删除。您可以返回首页，或继续前往在线报名。'
+};

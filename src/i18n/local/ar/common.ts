@@ -1,0 +1,63 @@
+export default {
+  'brand.name': 'كلية ساي التعليمية اليمنية',
+  'brand.short': 'كلية ساي',
+  'brand.tagline': 'تعليم يربط اليمن بالصين',
+  'brand.since': 'تأسست عام 2009',
+
+  'nav.home': 'الرئيسية',
+  'nav.about': 'عن الكلية',
+  'nav.programs': 'البرامج',
+  'nav.system': 'النظام الإداري',
+  'nav.news': 'الأخبار',
+  'nav.admission': 'القبول الإلكتروني',
+  'nav.complain': 'تقديم شكوى',
+  'nav.contact': 'اتصل بنا',
+  'nav.console': 'لوحة الإدارة',
+
+  'action.applyNow': 'قدّم الآن',
+  'action.apply': 'تقديم',
+  'action.explorePrograms': 'استكشف البرامج',
+  'action.learnMore': 'اعرف المزيد',
+  'action.send': 'إرسال',
+  'action.sending': 'جارٍ الإرسال...',
+  'action.backHome': 'العودة للرئيسية',
+  'action.viewMap': 'عرض الموقع على الخريطة',
+  'action.chatWhatsapp': 'تواصل عبر واتساب',
+
+  'top.latestNews': 'آخر الأخبار',
+  'top.openAdmissions': 'القبول مفتوح للعام 2026',
+
+  'lang.switch': 'اللغة',
+
+  'address': 'شارع حداد، دوار ريماكس، صنعاء، اليمن',
+
+  'footer.about': 'كلية ساي التعليمية اليمنية تقدّم تعليم اللغة الصينية وبرامج الدبلوم المهني في صنعاء، بفريق تدريس يمني وصيني معتمد.',
+  'footer.quickLinks': 'روابط سريعة',
+  'footer.programs': 'البرامج',
+  'footer.support': 'الدعم',
+  'footer.emailUs': 'راسلنا',
+  'footer.address': 'العنوان',
+  'footer.contact': 'الهاتف',
+  'footer.rights': '© كلية ساي التعليمية اليمنية 2026. جميع الحقوق محفوظة.',
+  'footer.findUs': 'موقعنا',
+
+  'form.fullName': 'الاسم الكامل',
+  'form.phone': 'رقم الهاتف',
+  'form.email': 'البريد الإلكتروني',
+  'form.message': 'الرسالة',
+  'form.messagePlaceholder': 'اكتب استفسارك هنا',
+  'form.subject': 'الموضوع',
+  'form.program': 'البرنامج',
+  'form.optional': 'اختياري',
+  'form.requiredHint': 'الحقول المعلّمة بـ * مطلوبة.',
+  'form.characters': 'حرف',
+  'form.successAdmission': 'تم استلام طلبك. سيتواصل معك مكتب القبول خلال يومي عمل.',
+  'form.successComplain': 'تم استلام شكواك بسرية تامة، وسنرد عليك في أقرب وقت.',
+  'form.successContact': 'تم إرسال رسالتك بنجاح. شكراً لتواصلك معنا.',
+  'form.errorGeneric': 'تعذر إرسال النموذج. يرجى المحاولة مرة أخرى.',
+  'form.errorNetwork': 'خطأ في الاتصال بالشبكة. تحقق من الاتصال ثم حاول مجدداً.',
+  'form.errorLength': 'يجب ألا تتجاوز الرسالة 500 حرف.',
+
+  'notFound.title': 'الصفحة غير موجودة',
+  'notFound.desc': 'قد يكون الرابط قد تغيّر أو حُذفت الصفحة. يمكنك العودة إلى الرئيسية أو الانتقال إلى صفحة القبول.'
+};
