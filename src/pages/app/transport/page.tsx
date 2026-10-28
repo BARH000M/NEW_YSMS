@@ -32,6 +32,8 @@ import {
 import { AllocationModal, RouteModal, StopModal, VehicleModal } from './components/TransportModals';
 import { TransportRouteCards, TransportVehicleCards } from './components/TransportMobileCards';
 import { ALL_ROUTES, TransportBoardingGroups } from './components/TransportBoarding';
+import FleetManifestsButton from './components/FleetManifests';
+import { isOverfull, vehicleCapacity } from './components/routeGroups';
 
 type ModalKind = 'vehicle' | 'route' | 'stop' | 'allocation' | null;
 
@@ -202,6 +204,12 @@ export default function TransportPage() {
             )}
             {tab === 'allocations' && (
               <>
+                <FleetManifestsButton
+                  rows={active}
+                  routes={routes}
+                  stops={stops}
+                  vehicles={vehicles}
+                />
                 <ExportBar
                   title={t('app.transport.allocationList')}
                   fileName="transport-allocations"
@@ -325,6 +333,7 @@ export default function TransportPage() {
             rows={visibleRoutes}
             stops={stops}
             active={active}
+            vehicles={vehicles}
             vehicleLabel={vehicleLabel}
           />
           {visibleRoutes.length === 0 ? (
@@ -347,6 +356,8 @@ export default function TransportPage() {
                 {visibleRoutes.map((row) => {
                   const routeStops = stops.filter((stop) => stop.route_id === row.id);
                   const riders = active.filter((item) => item.route_id === row.id).length;
+                  const capacity = vehicleCapacity(row, vehicles);
+                  const over = isOverfull(riders, capacity);
                   return (
                     <Row key={row.id}>
                       <Td>
@@ -374,7 +385,15 @@ export default function TransportPage() {
                       <Td className="text-xs whitespace-nowrap">{vehicleLabel(row.vehicle_id)}</Td>
                       <Td className="text-xs tabular-nums">{routeStops.length}</Td>
                       <Td>
-                        <Badge tone={riders > 0 ? 'accent' : 'neutral'}>{riders}</Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge tone={riders > 0 ? 'accent' : 'neutral'}>{riders}</Badge>
+                          {over ? (
+                            <Badge tone="danger">
+                              <i className="ri-error-warning-line" />
+                              {t('app.transport.overfull')} · {riders}/{capacity}
+                            </Badge>
+                          ) : null}
+                        </div>
                       </Td>
                     </Row>
                   );

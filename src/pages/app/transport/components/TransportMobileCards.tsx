@@ -4,6 +4,7 @@ import { formatDate } from '@/utils/date';
 import { formatMoney } from '@/utils/money';
 import { Badge } from '@/components/app/ui';
 import RecordPrintButton from '@/components/app/RecordPrintButton';
+import { isOverfull, vehicleCapacity } from './routeGroups';
 
 /*
   Phone registers for transport. Every list is a vertical card stack so the
@@ -88,10 +89,11 @@ interface RouteCardsProps {
   rows: RouteRow[];
   stops: StopRow[];
   active: TransportAllocation[];
+  vehicles: Vehicle[];
   vehicleLabel: (id: string | null) => string;
 }
 
-export function TransportRouteCards({ rows, stops, active, vehicleLabel }: RouteCardsProps) {
+export function TransportRouteCards({ rows, stops, active, vehicles, vehicleLabel }: RouteCardsProps) {
   const { t } = useTranslation();
   if (rows.length === 0) return null;
 
@@ -100,6 +102,8 @@ export function TransportRouteCards({ rows, stops, active, vehicleLabel }: Route
       {rows.map((row) => {
         const routeStops = stops.filter((stop) => stop.route_id === row.id);
         const riders = active.filter((item) => item.route_id === row.id).length;
+        const capacity = vehicleCapacity(row, vehicles);
+        const over = isOverfull(riders, capacity);
         return (
           <div key={row.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
@@ -124,6 +128,12 @@ export function TransportRouteCards({ rows, stops, active, vehicleLabel }: Route
               <Badge tone={riders > 0 ? 'accent' : 'neutral'}>
                 {riders} {t('app.transport.students')}
               </Badge>
+              {over ? (
+                <Badge tone="danger">
+                  <i className="ri-error-warning-line" />
+                  {t('app.transport.overfull')} · {riders}/{capacity}
+                </Badge>
+              ) : null}
             </div>
 
             {routeStops.length > 0 ? (

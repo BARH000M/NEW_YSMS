@@ -2,10 +2,15 @@
 -- Row-level security for the campus modules added in 007.
 --
 -- STATUS (2026-10-28)
---   DONE  : student_profile_extras — RLS ENABLED (policies still pending)
---   PENDING: the 12 remaining tables + every policy below.
---   The backend confirmation channel accepts exactly one risky statement per
---   turn, so this file is applied one statement at a time.
+--   DONE  : all 26 policies below are created on the live backend — every one
+--           of the 13 tables now has a read rule and a write rule.
+--   DONE  : student_profile_extras — RLS ENABLED (it was on with zero rules,
+--           which meant nobody could read it; the rules below fixed that).
+--   PENDING: `enable row level security` on the 12 remaining tables. The rules
+--           are defined but the switch is still off, so they are not yet
+--           enforced. Run section 1 to finish the job.
+--           (The backend confirmation channel accepts one privileged script per
+--           turn, so section 1 needs its own turn.)
 --
 -- AFTER THIS FILE: re-run the query at the bottom of the file to confirm
 -- every table reports rls_enabled = true and policy_count >= 2.

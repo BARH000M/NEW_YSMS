@@ -6,6 +6,8 @@ import { formatMoney } from '@/utils/money';
 import { Badge } from '@/components/app/ui';
 import RecordPrintButton from '@/components/app/RecordPrintButton';
 import RouteManifestButton from './RouteManifest';
+import { buildRouteGroups } from './routeGroups';
+import type { RouteGroup } from './routeGroups';
 
 /*
   Boarding register grouped by route, then by stop. A driver picks their route
@@ -25,20 +27,6 @@ interface BoardingProps {
   onRelease: (id: string) => void;
 }
 
-interface RouteGroup {
-  id: string;
-  name: string;
-  start: string | null;
-  end: string | null;
-  vehicleNo: string;
-  vehicleModel: string | null;
-  driver: string;
-  driverPhone: string | null;
-  capacity: number;
-  fare: number;
-  riders: TransportAllocation[];
-}
-
 export function TransportBoardingGroups({
   rows,
   routes,
@@ -50,34 +38,7 @@ export function TransportBoardingGroups({
 }: BoardingProps) {
   const { t, i18n } = useTranslation();
 
-  const groups = useMemo<RouteGroup[]>(() => {
-    const byRoute = new Map<string, TransportAllocation[]>();
-    rows.forEach((row) => {
-      const bucket = byRoute.get(row.route_id);
-      if (bucket) bucket.push(row);
-      else byRoute.set(row.route_id, [row]);
-    });
-
-    const list: RouteGroup[] = Array.from(byRoute.entries()).map(([id, riders]) => {
-      const route = routes.find((item) => item.id === id);
-      const vehicle = vehicles.find((item) => item.id === route?.vehicle_id);
-      return {
-        id,
-        name: route?.name ?? riders[0]?.transport_routes?.name ?? '—',
-        start: route?.start_point ?? null,
-        end: route?.end_point ?? null,
-        vehicleNo: vehicle?.vehicle_no ?? '—',
-        vehicleModel: vehicle?.model ?? null,
-        driver: vehicle?.driver_name ?? '—',
-        driverPhone: vehicle?.driver_phone ?? null,
-        capacity: Number(vehicle?.capacity ?? 0),
-        fare: Number(route?.fare ?? riders[0]?.transport_routes?.fare ?? 0),
-        riders,
-      };
-    });
-
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows, routes, vehicles]);
+  const groups = useMemo<RouteGroup[]>(() => buildRouteGroups(rows, routes, vehicles), [rows, routes, vehicles]);
 
   const selected = routeId === ALL_ROUTES ? groups : groups.filter((group) => group.id === routeId);
 

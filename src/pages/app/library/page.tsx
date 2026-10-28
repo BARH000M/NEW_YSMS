@@ -9,8 +9,9 @@ import {
   returnBook,
   setBookActive,
 } from '@/api/campus';
-import { formatDate } from '@/utils/date';
+import { formatDate, todayKey } from '@/utils/date';
 import { formatMoney } from '@/utils/money';
+import { DEFAULT_FINE_PER_DAY, isLoanOverdue, loanDaysLate, loanFine } from '@/utils/libraryFine';
 import ExportBar from '@/components/app/ExportBar';
 import {
   Badge,
@@ -28,6 +29,7 @@ import {
   Th,
 } from '@/components/app/ui';
 import { BookModal, IssueModal, MemberModal } from './components/LibraryModals';
+import OverdueFinesPanel from './components/OverdueFines';
 
 export default function LibraryPage() {
   const { t, i18n } = useTranslation();
@@ -101,10 +103,24 @@ function LibraryContent({
 }) {
   const { t } = useTranslation();
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [fineRate, setFineRate] = useState(() => {
+    // The daily rate is a local policy preference, not library data.
+    const saved = Number(window.localStorage.getItem('sai-library-fine-rate'));
+    return Number.isFinite(saved) && saved > 0 ? saved : DEFAULT_FINE_PER_DAY;
+  });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const isOverdue = (issue: { status: string; due_on: string | null }) =>
-    issue.status === 'issued' && !!issue.due_on && issue.due_on < today;
+  const changeFineRate = (value: number) => {
+    setFineRate(value);
+    try {
+      window.localStorage.setItem('sai-library-fine-rate', String(value));
+    } catch {
+      // Private mode: keep the in-memory rate.
+    }
+  };
+
+  const today = todayKey();
+  const isOverdue = (issue: { status: string; due_on: string | null; returned_on?: string | null }) =>
+    isLoanOverdue(issue, today);
 
   const issuedByBook = useMemo(() => {
     const map = new Map<string, number>();
@@ -132,6 +148,9 @@ function LibraryContent({
     .filter((issue) => !overdueOnly || isOverdue(issue));
 
   const overdueLoans = issues.filter(isOverdue).length;
+  const overdueFineTotal = issues
+    .filter(isOverdue)
+    .reduce((sum, issue) => sum + loanFine(loanDaysLate(issue, today), fineRate), 0);
   const visibleMembers = members.filter(
     (member) => !term || member.name.toLowerCase().includes(term) || (member.card_no ?? '').toLowerCase().includes(term),
   );
@@ -233,17 +252,27 @@ function LibraryContent({
                     t('app.library.issuedOn'),
                     t('app.library.dueOn'),
                     t('app.library.returnedOn'),
+                    t('app.library.daysLate'),
+                    t('app.library.fineDue'),
                     t('app.common.status'),
                   ]}
-                  rows={visibleIssues.map((issue) => [
-                    issue.library_books?.title ?? '—',
-                    issue.library_members?.name ?? '—',
-                    formatDate(issue.issued_on, language),
-                    issue.due_on ? formatDate(issue.due_on, language) : '—',
-                    issue.returned_on ? formatDate(issue.returned_on, language) : '—',
-                    t(`app.library.status.${issue.status}`),
-                  ])}
-                  summary={[{ label: t('app.library.onLoan'), value: String(activeLoans.length) }]}
+                  rows={visibleIssues.map((issue) => {
+                    const days = loanDaysLate(issue, today);
+                    return [
+                      issue.library_books?.title ?? '—',
+                      issue.library_members?.name ?? '—',
+                      formatDate(issue.issued_on, language),
+                      issue.due_on ? formatDate(issue.due_on, language) : '—',
+                      issue.returned_on ? formatDate(issue.returned_on, language) : '—',
+                      days > 0 ? String(days) : '—',
+                      days > 0 ? formatMoney(loanFine(days, fineRate)) : '—',
+                      t(`app.library.status.${issue.status}`),
+                    ];
+                  })}
+                  summary={[
+                    { label: t('app.library.onLoan'), value: String(activeLoans.length) },
+                    { label: t('app.library.overdueTotal'), value: formatMoney(overdueFineTotal) },
+                  ]}
                 />
                 {addButton(t('app.library.issueBook'), 'issue')}
               </>
@@ -340,6 +369,11 @@ function LibraryContent({
 
       {tab === 'issues' && (
         <Card>
+          {overdueLoans > 0 ? (
+            <div className="p-3 md:p-4 border-b border-background-200">
+              <OverdueFinesPanel issues={issues} rate={fineRate} onRateChange={changeFineRate} today={today} />
+            </div>
+          ) : null}
           {visibleIssues.length === 0 ? (
             <EmptyState
               icon="ri-arrow-left-right-line"
@@ -351,6 +385,8 @@ function LibraryContent({
               <div className="md:hidden divide-y divide-background-100">
                 {visibleIssues.map((issue) => {
                   const overdue = isOverdue(issue);
+                  const days = loanDaysLate(issue, today);
+                  const fine = loanFine(days, fineRate);
                   return (
                     <div key={issue.id} className="p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -395,6 +431,18 @@ function LibraryContent({
                         ) : null}
                       </div>
 
+                      {days > 0 ? (
+                        <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1.5 text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-primary-800 font-semibold">
+                            <i className="ri-alarm-warning-line" />
+                            {t('app.library.daysLate')}: {days}
+                          </span>
+                          <span className="font-semibold text-primary-900 tabular-nums whitespace-nowrap">
+                            {t('app.library.fineDue')}: {formatMoney(fine)}
+                          </span>
+                        </div>
+                      ) : null}
+
                       {issue.status === 'issued' ? (
                         <button
                           type="button"
@@ -422,6 +470,8 @@ function LibraryContent({
                   <Th>{t('app.library.issuedOn')}</Th>
                   <Th>{t('app.library.dueOn')}</Th>
                   <Th>{t('app.library.returnedOn')}</Th>
+                  <Th>{t('app.library.daysLate')}</Th>
+                  <Th>{t('app.library.fineDue')}</Th>
                   <Th>{t('app.common.status')}</Th>
                   <Th>{t('app.common.actions')}</Th>
                 </tr>
@@ -429,6 +479,8 @@ function LibraryContent({
               <tbody>
                 {visibleIssues.map((issue) => {
                   const overdue = isOverdue(issue);
+                  const days = loanDaysLate(issue, today);
+                  const fine = loanFine(days, fineRate);
                   return (
                     <Row key={issue.id}>
                       <Td className="text-sm text-foreground-950 max-w-[220px] truncate">
@@ -457,6 +509,23 @@ function LibraryContent({
                       </Td>
                       <Td className="text-xs whitespace-nowrap text-foreground-600">
                         {issue.returned_on ? formatDate(issue.returned_on, language) : '—'}
+                      </Td>
+                      <Td className="text-xs tabular-nums whitespace-nowrap">
+                        {days > 0 ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-primary-800">
+                            <i className="ri-alarm-warning-line text-[13px]" />
+                            {days}
+                          </span>
+                        ) : (
+                          <span className="text-foreground-400">—</span>
+                        )}
+                      </Td>
+                      <Td className="text-xs tabular-nums whitespace-nowrap">
+                        {days > 0 ? (
+                          <span className="font-semibold text-foreground-950">{formatMoney(fine)}</span>
+                        ) : (
+                          <span className="text-foreground-400">—</span>
+                        )}
                       </Td>
                       <Td>
                         <Badge tone={issue.status === 'returned' ? 'secondary' : overdue ? 'danger' : 'primary'}>
