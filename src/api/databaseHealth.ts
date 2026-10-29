@@ -3,20 +3,22 @@ import { supabase } from './supabaseClient';
 /**
  * Database health — read-only integrity sweep for staff.
  *
- * Two families of problems only, because they are the two that silently rot a
- * school database:
+ * Three families of problems only, because they are the ones that silently rot
+ * a school database:
  *   1. ORPHANS  — a row pointing at a parent that no longer exists. Nothing
  *                 errors at write time, the record just becomes invisible.
  *   2. DUPLICATES — the same fact stored twice (a student marked twice on one
  *                 day, two invoices with one number), which quietly doubles
  *                 money or attendance.
+ *   3. FEE MISMATCHES — invoices whose receipts no longer agree with the
+ *                 billed total, so the ledger and the cash box disagree.
  *
  * Every check is a plain read against the live tables, so it respects RLS and
  * never mutates anything. Comparisons happen in the browser over id sets,
  * which keeps the whole sweep to one round of parallel queries.
  */
 
-export type HealthCategory = 'orphan' | 'duplicate';
+export type HealthCategory = 'orphan' | 'duplicate' | 'mismatch';
 
 export interface HealthIssue {
   /** Stable row key for React lists. */
@@ -35,13 +37,17 @@ export interface HealthCheck {
   /** Parent table the row should have matched, when relevant. */
   parent: string | null;
   count: number;
+  /** Offending rows, capped so one broken table can never freeze the page. */
   rows: HealthIssue[];
+  /** ISO stamp of the sweep that produced this check. */
+  ranAt: string;
 }
 
 export interface HealthReport {
   checks: HealthCheck[];
   orphans: number;
   duplicates: number;
+  mismatches: number;
   cleanChecks: number;
   totalChecks: number;
   tablesScanned: number;
@@ -51,8 +57,8 @@ export interface HealthReport {
 /** Rows pulled per table. Well above any real school's row count, still bounded. */
 const ROW_LIMIT = 20000;
 
-/** How many offending rows are kept for display per check. */
-const DISPLAY_LIMIT = 25;
+/** Offending rows kept per check — enough to hand off, still bounded. */
+const ROW_SAMPLE_LIMIT = 200;
 
 interface StudentLite {
   id: string;
@@ -70,6 +76,8 @@ interface InvoiceLite {
   id: string;
   invoice_no: string;
   student_id: string;
+  status: string | null;
+  total: number | string | null;
 }
 
 interface GuardianLite {
@@ -113,6 +121,7 @@ interface InvoiceItemLite {
   id: string;
   invoice_id: string;
   description: string | null;
+  amount: number | string | null;
 }
 
 interface PaymentLite {
@@ -151,14 +160,14 @@ function orphanCheck(input: {
   table: string;
   parent: string;
   offenders: HealthIssue[];
-}): HealthCheck {
+}): Omit<HealthCheck, 'ranAt'> {
   return {
     key: input.key,
     category: 'orphan',
     table: input.table,
     parent: input.parent,
     count: input.offenders.length,
-    rows: input.offenders.slice(0, DISPLAY_LIMIT),
+    rows: input.offenders.slice(0, ROW_SAMPLE_LIMIT),
   };
 }
 
@@ -167,7 +176,7 @@ function duplicateCheck(input: {
   key: string;
   table: string;
   grouped: { group: string; issue: HealthIssue }[];
-}): HealthCheck {
+}): Omit<HealthCheck, 'ranAt'> {
   const buckets = new Map<string, HealthIssue[]>();
   input.grouped.forEach(({ group, issue }) => {
     const bucket = buckets.get(group) ?? [];
@@ -184,7 +193,23 @@ function duplicateCheck(input: {
     table: input.table,
     parent: null,
     count: offenders.length,
-    rows: offenders.slice(0, DISPLAY_LIMIT),
+    rows: offenders.slice(0, ROW_SAMPLE_LIMIT),
+  };
+}
+
+/** Fee mismatch builder — invoices that disagree with their own receipts or lines. */
+function mismatchCheck(input: {
+  key: string;
+  offenders: HealthIssue[];
+  parent?: string;
+}): Omit<HealthCheck, 'ranAt'> {
+  return {
+    key: input.key,
+    category: 'mismatch',
+    table: 'invoices',
+    parent: input.parent ?? 'payments',
+    count: input.offenders.length,
+    rows: input.offenders.slice(0, ROW_SAMPLE_LIMIT),
   };
 }
 
@@ -213,8 +238,8 @@ export async function runDatabaseHealth(): Promise<HealthReport> {
     fetchRows<IdLite>('sections', 'id'),
     fetchRows<GuardianLite>('guardians', 'id, full_name'),
     fetchRows<ExamLite>('exams', 'id, name'),
-    fetchRows<InvoiceLite>('invoices', 'id, invoice_no, student_id'),
-    fetchRows<InvoiceItemLite>('invoice_items', 'id, invoice_id, description'),
+    fetchRows<InvoiceLite>('invoices', 'id, invoice_no, student_id, status, total'),
+    fetchRows<InvoiceItemLite>('invoice_items', 'id, invoice_id, description, amount'),
     fetchRows<PaymentLite>('payments', 'id, invoice_id, student_id, receipt_no, amount'),
     fetchRows<ExamResultLite>(
       'exam_results',
@@ -243,7 +268,7 @@ export async function runDatabaseHealth(): Promise<HealthReport> {
     return `${student.first_name} ${student.last_name ?? ''}`.trim();
   };
 
-  const checks: HealthCheck[] = [];
+  const checks: Omit<HealthCheck, 'ranAt'>[] = [];
 
   // ---------------------------------------------------------------- orphans
 
@@ -538,19 +563,106 @@ export async function runDatabaseHealth(): Promise<HealthReport> {
     }),
   );
 
-  const orphanRows = checks.filter((c) => c.category === 'orphan').reduce((sum, c) => sum + c.count, 0);
-  const duplicateRows = checks
+  // ------------------------------------------------------- fee mismatches
+
+  // One pass over every receipt, so each invoice knows what it actually
+  // collected. Anything off by more than a cent is a real ledger problem.
+  const paidByInvoice = new Map<string, number>();
+  payments.forEach((row) => {
+    const amount = Number(row.amount ?? 0);
+    if (!Number.isFinite(amount)) return;
+    paidByInvoice.set(row.invoice_id, (paidByInvoice.get(row.invoice_id) ?? 0) + amount);
+  });
+
+  const money = (value: number): string => value.toFixed(2);
+  const overpaid: HealthIssue[] = [];
+  const paidWithoutReceipts: HealthIssue[] = [];
+
+  // Bills are built line by line, so the header total must equal its own lines.
+  // A drift here means the family is billed one number and shown another.
+  const linesByInvoice = new Map<string, { sum: number; count: number }>();
+  invoiceItems.forEach((row) => {
+    const amount = Number(row.amount ?? 0);
+    if (!Number.isFinite(amount)) return;
+    const bucket = linesByInvoice.get(row.invoice_id) ?? { sum: 0, count: 0 };
+    bucket.sum += amount;
+    bucket.count += 1;
+    linesByInvoice.set(row.invoice_id, bucket);
+  });
+
+  const totalVsLines: HealthIssue[] = [];
+
+  invoices.forEach((row) => {
+    const paid = paidByInvoice.get(row.id) ?? 0;
+    const total = Number(row.total ?? 0);
+    const safeTotal = Number.isFinite(total) ? total : 0;
+    const label = studentName(row.student_id);
+
+    if (paid - safeTotal > 0.01) {
+      overpaid.push({
+        id: row.id,
+        label,
+        detail: `invoice ${row.invoice_no} · paid ${money(paid)} of ${money(safeTotal)} (+${money(paid - safeTotal)})`,
+      });
+    }
+
+    const status = String(row.status ?? '').trim().toLowerCase();
+    if (status === 'paid' && paid <= 0.01) {
+      paidWithoutReceipts.push({
+        id: row.id,
+        label,
+        detail: `invoice ${row.invoice_no} · total ${money(safeTotal)} · status paid, no receipts`,
+      });
+    }
+
+    const lines = linesByInvoice.get(row.id);
+    // An invoice with no lines at all is caught by the orphan family instead.
+    if (!lines || lines.count === 0) return;
+
+    const diff = safeTotal - lines.sum;
+    if (Math.abs(diff) <= 0.01) return;
+
+    totalVsLines.push({
+      id: row.id,
+      label,
+      detail: `invoice ${row.invoice_no} · total ${money(safeTotal)} vs lines ${money(lines.sum)} (${
+        diff > 0 ? '+' : ''
+      }${money(diff)}) · ${lines.count} line${lines.count === 1 ? '' : 's'}`,
+    });
+  });
+
+  checks.push(mismatchCheck({ key: 'mismatch_overpaid', offenders: overpaid }));
+  checks.push(
+    mismatchCheck({ key: 'mismatch_paid_no_payments', offenders: paidWithoutReceipts }),
+  );
+  checks.push(
+    mismatchCheck({
+      key: 'mismatch_invoice_lines',
+      offenders: totalVsLines,
+      parent: 'invoice_items',
+    }),
+  );
+
+  const ranAt = new Date().toISOString();
+  const stamped: HealthCheck[] = checks.map((check) => ({ ...check, ranAt }));
+
+  const orphanRows = stamped.filter((c) => c.category === 'orphan').reduce((sum, c) => sum + c.count, 0);
+  const duplicateRows = stamped
     .filter((c) => c.category === 'duplicate')
+    .reduce((sum, c) => sum + c.count, 0);
+  const mismatchRows = stamped
+    .filter((c) => c.category === 'mismatch')
     .reduce((sum, c) => sum + c.count, 0);
 
   return {
-    checks,
+    checks: stamped,
     orphans: orphanRows,
     duplicates: duplicateRows,
-    cleanChecks: checks.filter((c) => c.count === 0).length,
-    totalChecks: checks.length,
-    tablesScanned: 14,
-    ranAt: new Date().toISOString(),
+    mismatches: mismatchRows,
+    cleanChecks: stamped.filter((c) => c.count === 0).length,
+    totalChecks: stamped.length,
+    tablesScanned: 15,
+    ranAt,
   };
 }
 
